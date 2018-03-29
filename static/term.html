@@ -17,7 +17,7 @@
 <body style="margin: 0 0; text-align: left;">
   <div style="position: absolute; z-index: 2; right: 0%; margin-top: 10px; margin-right: 10px; opacity:0.4;">
     <button style="margin-top: 5px; width: 140px" id="term_size">0x0</button><br/>
-    <button style="margin-top: 5px; width: 140px;" onclick="window.open('/download')">File Download</button><br/>
+    <button style="margin-top: 5px; width: 140px;" onclick="window.open(window.address + '/download')">File Download</button><br/>
     <button style="margin-top: 5px; width: 140px;" onclick="window.upload()" id="file_upload">File Upload</button><br/>
     <button style="margin-top: 5px; width: 140px;" onclick="window.termPaste()">Extern Paste</button><br/>
   </div>
@@ -84,13 +84,16 @@
         document.getElementById('term_div').onclick();
     };
 
-    var proto = null;
-    if (window.location.protocol == 'http:')
-      proto = 'ws://';
-    else
-      proto = 'wss://';
-    
     var address = prompt("Input the location of OpenSSH:", window.location.host);
+
+    var proto = null;
+    if (window.location.protocol == 'http:') {
+      proto = 'ws://';
+      window.address = 'http://' + address;
+    } else {
+      proto = 'wss://';
+      window.address = 'https://' + address;
+    }
     
     window.upload = function() {
       document.getElementById('file_uploader').innerHTML = '<input type="file" id="file_uploader_obj" />';
