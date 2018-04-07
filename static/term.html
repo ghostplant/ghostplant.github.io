@@ -87,7 +87,8 @@
     if (!localStorage.getItem('_address'))
       localStorage.setItem('_address', window.location.host);
     var address = prompt("Input the location of OpenSSH:", localStorage.getItem('_address'));
-    localStorage.setItem('_address', address);
+    if (address)
+      localStorage.setItem('_address', address);
 
     var proto = null;
     if (window.location.protocol == 'http:') {
