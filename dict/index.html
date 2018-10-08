@@ -1,0 +1,50 @@
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+
+<div id="main" style="display:none">
+  <input id="key" style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" autofocus="autofocus" placeholder="在这里输入关键字.." /><br/>
+  <button style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" onclick="search()">搜索</button><br/>
+
+  <div style="width:95%; margin: 2% 2% 2% 2%">搜索结果：</div>
+  <textarea id="content" style="width:95%; height: 70%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" readonly="readonly" ></textarea>
+</div>
+
+<script>
+
+var dict = {};
+var xhr = new XMLHttpRequest();
+
+xhr.open("GET", 'dict.txt', true);
+xhr.onload = function() {
+  var lines = xhr.responseText.split('\n');
+  for (var i in lines) {
+    var at = lines[i].indexOf('=');
+    if (at < 0)
+      continue;
+    dict[lines[i].substring(0, at)] = lines[i].substring(at + 1);
+  }
+  document.getElementById('main').style.display = '';
+}
+xhr.send(null);
+
+function search() {
+  var key = document.getElementById('key');
+  key.value = key.value.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+  if (key.value == '') {
+    alert('请在搜索框输入要搜索的关键字。');
+    key.focus();
+  } else {
+    var ord = 1, val = key.value, buff = '';
+    for (var it in dict) {
+      var at = it.indexOf(val);
+      if (at >= 0) {
+        buff += '【结果' + ord + ' - ' + it + '】\n\n  ' + dict[it] + '\n\n====================================\n\n';
+        ord = ord + 1;
+      }
+    }
+    if (buff == '')
+      buff = '没有找到符合的搜索结果。';
+    document.getElementById('content').value = buff;
+  }
+}
+</script>
