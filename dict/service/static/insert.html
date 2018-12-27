@@ -1,0 +1,94 @@
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+
+<div id="edit" style="display:none">
+  <input id="key" style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" autofocus="autofocus" placeholder="在这里输入关键字.." /><br/>
+  <div style="width:95%; margin: 2% 2% 2% 2%">更改词语的解释信息：</div>
+  <textarea id="content" style="width:95%; height: 50%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" ></textarea>
+  <button style="width:95%; margin: 1% 2% 1% 2%; padding: 2% 2% 2% 2%" onclick="saveWord()">保存信息</button><br/>
+  <button style="width:95%; margin: 1% 2% 1% 2%; padding: 2% 2% 2% 2%" onclick="deleteWord()">删除本词条</button><br/>
+  <button style="width:95%; margin: 1% 2% 1% 2%; padding: 2% 2% 2% 2%" onclick="refreshPage();">后退</button><br/>
+</div>
+
+<div id="select" style="display:none">
+  <button style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" onclick="insertWord()">添加新词</button><br/>
+  <div style="width:95%; margin: 2% 2% 2% 2%">修改已有词：</div>
+  <div id="words" style="width:95%; margin: 2% 2% 2% 2%">
+  </div>
+</div>
+
+<script>
+
+function refreshPage() {
+  window.location.href='/static/insert.html';
+}
+
+function request(data) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", '/rest/', false);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify(data));
+  try {
+    var obj = JSON.parse(xhr.responseText);
+    if (obj.retCode != 0)
+      throw new Exception();
+    return obj.body;
+  } catch (e) {
+    alert('网络出错，请联系管理员。');
+    return null;
+  }
+}
+
+function deleteWord() {
+  var name = document.getElementById('key').value;
+  if (name.length == 0)
+    return alert('要删除的词条名字不能为空！');
+  if (confirm('（不可撤销）是否彻底删除词条：' + name + ' ?')) {
+    request({'delname': name});
+    refreshPage();
+  }
+}
+
+function saveWord() {
+  var name = document.getElementById('key').value;
+  name = name.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+  var content = document.getElementById('content').value;
+  content = content.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+  if (name.length == 0 || content.length == '')
+    return alert('词条名字、介绍内容均不能为空，\n请重新输入并再次保存！');
+
+  if (confirm('是否确认保存新词条 ' + name + ' ?')) {
+    request({'name': name, 'info': content});
+    refreshPage();
+  }
+}
+
+function insertWord(name, info) {
+  if (!name)
+    name = '';
+  if (!info)
+    info = '';
+  document.getElementById('key').value = name;
+  document.getElementById('content').value = info;
+  document.getElementById('select').style.display = 'none';
+  document.getElementById('edit').style.display = '';
+}
+
+function updateWord(obj) {
+  var name = obj.innerHTML;
+  var word = request({'name': name})[0];
+  insertWord(word.name, word.info);
+}
+
+var words = request({});
+var buff = '', blocks = document.getElementById('words');
+
+for (var i in words)
+  buff += '<button style="padding: 1% 1% 1% 1%; margin: 1%" onclick="updateWord(this)">' + words[i] + '</button>';
+if (buff == '')
+  buff = '无词条';
+blocks.innerHTML = buff;
+
+document.getElementById('select').style.display = '';
+
+</script>

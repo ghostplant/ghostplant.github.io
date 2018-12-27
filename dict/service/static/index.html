@@ -1,0 +1,52 @@
+<meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+
+<div id="main" style="display:none">
+  <div style="width:95%; margin: 12% 2% 2% 2%">搜索输入：</div>
+  <input id="key" style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" autofocus="autofocus" placeholder="在这里输入关键字.." /><br/>
+  <button style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" onclick="search()">搜索</button><br/>
+
+  <div style="width:95%; margin: 2% 2% 2% 2%">搜索结果：</div>
+  <textarea id="content" style="width:95%; height: 50%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" readonly="readonly" ></textarea>
+</div>
+
+<script>
+
+function request(data) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", '/rest/', false);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify(data));
+  try {
+    var obj = JSON.parse(xhr.responseText);
+    if (obj.retCode != 0)
+      throw new Exception();
+    return obj.body;
+  } catch (e) {
+    alert('网络出错，请联系管理员。');
+    return null;
+  }
+}
+
+document.getElementById('main').style.display = '';
+
+function search() {
+  var input = document.getElementById('key');
+  input.value = input.value.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+  if (input.value == '') {
+    alert('请在搜索框输入要搜索的关键字。');
+    input.focus();
+  } else {
+    var ans = request({'subname': input.value});
+
+    var ord = 1, buff = '';
+    for (var i in ans) {
+      buff += '【结果' + ord + ' - ' + ans[i].name + '】\n\n  ' + ans[i].info + '\n\n====================================\n\n';
+      ord = ord + 1;
+    }
+    if (buff == '')
+      buff = '没有找到符合的搜索结果。';
+    document.getElementById('content').value = buff;
+  }
+}
+</script>
