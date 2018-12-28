@@ -2,6 +2,7 @@
 <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
 
 <div id="edit" style="display:none">
+  <div style="width:95%; margin: 2% 2% 2% 2%">词语名称：</div>
   <input id="key" style="width:95%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" autofocus="autofocus" placeholder="在这里输入关键字.." /><br/>
   <div style="width:95%; margin: 2% 2% 2% 2%">更改词语的解释信息：</div>
   <textarea id="content" style="width:95%; height: 50%; margin: 2% 2% 2% 2%; padding: 2% 2% 2% 2%" ></textarea>
@@ -20,7 +21,14 @@
 <script>
 
 function refreshPage() {
-  window.location.href='/static/insert.html';
+  var random = Math.floor((Math.random() * 10000) + 1);
+  var url = decodeURI(window.location.href);
+  if (url.indexOf('?') < 0) {
+    url = url + "?random" + random;
+  } else {
+    url = url.substr(0, url.indexOf('?random')) + "?random" + random;
+  }
+  window.location.href = url;
 }
 
 function request(data) {

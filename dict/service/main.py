@@ -198,7 +198,7 @@ app = tornado.web.Application([
 	debug = False,
 )
 
-app.port = 8000
+app.port = 80
 	
 print("* Server listening on ':%d'" % app.port)
 tornado.httpserver.HTTPServer(app).listen(app.port)
