@@ -83,7 +83,7 @@ function insertWord(name, info) {
 }
 
 function updateWord(obj) {
-  var name = obj.innerHTML;
+  var name = obj.value;
   var word = request({'name': name})[0];
   insertWord(word.name, word.info);
 }
@@ -91,11 +91,21 @@ function updateWord(obj) {
 var words = request({});
 var buff = '', blocks = document.getElementById('words');
 
-for (var i in words)
-  buff += '<button style="padding: 1% 1% 1% 1%; margin: 1%" onclick="updateWord(this)">' + words[i] + '</button>';
+var _idx = 0;
+for (var i in words) {
+  buff += '<input type="submit" id="id_' + _idx + '" style="padding: 1% 1% 1% 1%; margin: 1%" onclick="updateWord(this)" />';
+  _idx++;
+}
 if (buff == '')
   buff = '无词条';
 blocks.innerHTML = buff;
+
+var _idx = 0;
+for (var i in words) {
+  buff += '<input type="submit" id="id_' + _idx + '" style="padding: 1% 1% 1% 1%; margin: 1%" onclick="updateWord(this)" />';
+  document.getElementById('id_' + _idx).value = words[i];
+  _idx++;
+}
 
 document.getElementById('select').style.display = '';
 
