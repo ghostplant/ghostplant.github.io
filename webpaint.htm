@@ -1,0 +1,317 @@
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<script>
+	
+	function onload() {
+		canvas = document.getElementById('myCanvas');
+		ctx = canvas.getContext('2d');
+		drawType = document.getElementById('drawType');
+		
+		var initLineWidth = 3;
+		
+		var initCanvas = function() {
+			ctx.lineWidth = initLineWidth;
+			mouseDown = false;
+			prevImage = null;
+			
+			document.getElementById('color').value = '#000000';
+			document.getElementById('color').style.color = '#FFFFFF';
+			document.getElementById('color').style.backgroundColor = '#000000';
+		};
+		
+		initCanvas();
+		document.getElementById('def_type').click();
+		
+		canvas.onmouseup = function(event) { mouseDown = false; };
+
+		canvas.onmousemove = function(event) {
+			if (mouseDown) {
+				ctx.strokeStyle = document.getElementById('color').style.backgroundColor;
+				var realX = event.pageX - canvas.offsetLeft;
+				var realY = event.pageY - canvas.offsetTop;
+				if (drawType.innerHTML == 'pen') {
+					ctx.beginPath();
+					ctx.moveTo(pageX,pageY);
+					ctx.lineTo(realX,realY);
+					ctx.stroke();
+					pageX = realX;
+					pageY = realY;
+				} else if (drawType.innerHTML == 'circle') {
+					if (imageData != null)
+						ctx.putImageData(imageData, prevX, prevY);
+					prevX = Math.min(pageX,realX)-2;
+					prevY = Math.min(pageY,realY)-2;
+					imageData = ctx.getImageData(prevX, prevY, Math.abs(realX-pageX)+5, Math.abs(realY-pageY)+5);
+					ctx.beginPath();
+					ctx.arc((pageX+realX)/2, (pageY+realY)/2, Math.min(Math.abs(realY-pageY)/2, Math.abs(realX-pageX)/2), 0, Math.PI*2,true);
+					ctx.stroke();
+				} else if (drawType.innerHTML == 'rect') {
+					if (imageData != null)
+						ctx.putImageData(imageData, prevX, prevY);
+					prevX = Math.min(pageX,realX) - 2;
+					prevY = Math.min(pageY,realY) - 2;
+					imageData = ctx.getImageData(prevX, prevY, Math.abs(realX-pageX)+5, Math.abs(realY-pageY)+5);
+					ctx.strokeRect(Math.min(pageX,realX), Math.min(pageY,realY), Math.abs(pageX-realX), Math.abs(pageY-realY));
+				} else if (drawType.innerHTML == 'line') {
+					if (imageData != null)
+						ctx.putImageData(imageData, prevX, prevY);
+					prevX = Math.min(pageX, realX)-2;
+					prevY = Math.min(pageY, realY)-2;
+					imageData = ctx.getImageData(prevX, prevY, Math.abs(realX-pageX)+5, Math.abs(realY-pageY)+5);
+					ctx.beginPath();
+					ctx.moveTo(pageX, pageY);
+					ctx.lineTo(realX, realY);
+					ctx.stroke();
+				} else if (drawType.innerHTML == 'eraser') {
+					var left = Math.max(1, realX-7), top = Math.max(1, realY-7);
+					var right = Math.min(canvas.width-1, realX+15),bottom = Math.min(canvas.height-1, realY+15);
+					ctx.clearRect(left,top,right-left,bottom-top);
+				}
+			}
+		};
+
+		canvas.onmousedown = function(event) {
+			if (event.button == 0) {
+				mouseDown = true;
+				pageX = event.pageX - canvas.offsetLeft;
+				pageY = event.pageY - canvas.offsetTop;
+				imageData = prevX = prevY = null;
+				
+				prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			}
+		};
+		
+		document.getElementById('color').onkeyup = function(event) {
+			var str = document.getElementById('color').value, color = '#FFFFFF', anti = '#';
+			if (str.length == 7 && str[0] == '#') {
+				for (var i=1; i<=6; i++) {
+					if ((str[i]<'0' || str[i]>'9') && (str[i]<'A' || str[i]>'F') && (str[i]<'a' || str[i]>'f'))
+						break;
+					if (i == 6)
+						color = str;
+				}
+			}
+			for (var i=1; i<7; i+=2) {
+				var mono = (255-parseInt(color.substr(i, 2), 16)).toString(16);
+				if (mono.length == 1)
+					mono = '0' + mono;
+				anti += mono;
+			}
+			var box = document.getElementById('color');
+			box.style.backgroundColor = color;
+			box.style.color = anti;
+			box.innerHTML = color;
+		}
+		
+		document.getElementById('upload').addEventListener('click', function() {
+			var obj = document.getElementById('image-file');
+			obj.onchange = function() {
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					var img = new Image();
+					img.src = e.target.result;
+					img.addEventListener('load', function() {
+						var w = img.width;
+						var h = img.height;
+						canvas.width = w;
+						canvas.height = h;
+						canvas.getContext("2d").drawImage(img, 0, 0);
+						initCanvas();
+					});
+				};
+				reader.readAsDataURL(obj.files[0]);
+			};
+			obj.click();
+		}, false);
+		
+		document.getElementById('download').addEventListener('click', function() {
+			
+			function downloadCanvas(link, canvasId, filename) {
+				link.href = document.getElementById(canvasId).toDataURL();
+				link.download = filename;
+			}
+			downloadCanvas(this, 'myCanvas', 'image.png');
+		}, false);
+		
+		document.getElementById('undo').addEventListener('click', function() {
+			if (prevImage != null) {
+					var tmpImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+					canvas.height = prevImage.h;
+					canvas.width = prevImage.w;
+					ctx.putImageData(prevImage.data, 0, 0);
+					ctx.lineWidth = initLineWidth;
+					prevImage = tmpImage;
+			}
+		}, false);
+		
+		document.getElementById('width-add').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			canvas.width += 20;
+			ctx.putImageData(prevImage.data, 0, 0);
+			ctx.lineWidth = initLineWidth;
+		}, false);
+		
+		document.getElementById('width-del').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			canvas.width -= 20;
+			ctx.putImageData(prevImage.data, 0, 0);
+			ctx.lineWidth = initLineWidth;
+		}, false);
+		
+		document.getElementById('height-add').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			canvas.height += 20;
+			ctx.putImageData(prevImage.data, 0, 0);
+			ctx.lineWidth = initLineWidth;
+		}, false);
+		
+		document.getElementById('height-del').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			canvas.height -= 20;
+			ctx.putImageData(prevImage.data, 0, 0);
+			ctx.lineWidth = initLineWidth;
+		}, false);
+		
+		document.getElementById('h-flip').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			
+			var img = new Image();
+			img.src = canvas.toDataURL("image/png");
+			img.addEventListener('load', function() {
+				var w = img.width;
+				var h = img.height;
+				canvas.width = w;
+				canvas.height = h;
+				ctx.save();
+				ctx.translate(canvas.width, 0);
+				ctx.scale(-1, 1);
+				canvas.getContext("2d").drawImage(img, 0, 0);
+				ctx.restore();
+				ctx.lineWidth = initLineWidth;
+			});
+		}, false);
+		
+		document.getElementById('v-flip').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			
+			var img = new Image();
+			img.src = canvas.toDataURL("image/png");
+			img.addEventListener('load', function() {
+				var w = img.width;
+				var h = img.height;
+				canvas.width = w;
+				canvas.height = h;
+				ctx.save();
+				ctx.translate(0, canvas.height);
+				ctx.scale(1, -1);
+				canvas.getContext("2d").drawImage(img, 0, 0);
+				ctx.restore();
+				ctx.lineWidth = initLineWidth;
+			});
+		}, false);
+		
+		document.getElementById('rotate').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			
+			var img = new Image();
+			img.src = canvas.toDataURL("image/png");
+			img.addEventListener('load', function() {
+				var w = img.width;
+				var h = img.height;
+				canvas.width = h;
+				canvas.height = w;
+				ctx.save();
+				ctx.translate(h/2, w/2);
+				ctx.rotate(Math.PI * 0.5);
+				ctx.translate(-w/2, -h/2);
+				canvas.getContext("2d").drawImage(img, 0, 0);
+				ctx.restore();
+				ctx.lineWidth = initLineWidth;
+			});
+		}, false);
+		
+		document.getElementById('scale-up').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			
+			var img = new Image();
+			img.src = canvas.toDataURL("image/png");
+			img.addEventListener('load', function() {
+				var scale_factor = 1.05;
+				var w = img.width;
+				var h = img.height;
+				canvas.width = w * scale_factor;
+				canvas.height = h * scale_factor;
+				ctx.save();
+				ctx.scale(scale_factor, scale_factor);
+				canvas.getContext("2d").drawImage(img, 0, 0);
+				ctx.restore();
+				ctx.lineWidth = initLineWidth;
+			});
+		}, false);
+		
+		document.getElementById('scale-down').addEventListener('click', function() {
+			prevImage = {'w': canvas.width, 'h':canvas.height, 'data': ctx.getImageData(0, 0, canvas.width, canvas.height)};
+			
+			var img = new Image();
+			img.src = canvas.toDataURL("image/png");
+			img.addEventListener('load', function() {
+				var scale_factor = 1.0 / 1.05;
+				var w = img.width;
+				var h = img.height;
+				canvas.width = w * scale_factor;
+				canvas.height = h * scale_factor;
+				ctx.save();
+				ctx.scale(scale_factor, scale_factor);
+				canvas.getContext("2d").drawImage(img, 0, 0);
+				ctx.restore();
+				ctx.lineWidth = initLineWidth;
+			});
+		}, false);
+	}
+
+</script>
+
+<style>
+
+	a:link { color:#4444cc; text-decoration:none; border-style: outset; background-color: #ccccff; box-shadow: 2px 2px 2px gray; }
+	a:visited { color:#4444cc; text-decoration:none; border-style: outset; background-color: #ccccff; box-shadow: 2px 2px 2px gray; }
+	a:hover { color:#4444cc; text-decoration:none; border-style: outset; background-color: #ccccff; box-shadow: 2px 2px 2px gray; }
+	a:active { color:#4444cc; text-decoration:none; border-style: outset; background-color: #ccccff; box-shadow: 2px 2px 2px gray; }
+
+</style>
+
+<title>Web Paint</title>
+
+<body onload="onload()" style="background:white">
+	<div style="display:none">
+		<input type="file" id="image-file"/>
+		<div id="drawType"></div>
+	</div>
+	<div align="center">
+		<div style="margin-bottom:10px">
+			<input id="def_type" type="radio" style="color:black" onclick="drawType.innerHTML='pen'" name="btnRad">笔
+			<input type="radio" style="color:black" onclick="drawType.innerHTML='circle'" name="btnRad">圆
+			<input type="radio" style="color:black" onclick="drawType.innerHTML='rect'" name="btnRad">矩形
+			<input type="radio" style="color:black" onclick="drawType.innerHTML='line'" name="btnRad">直线
+			<input type="radio" style="color:black" onclick="drawType.innerHTML='eraser'" name="btnRad">橡皮
+			<div style="margin-left:20px;display:inline" />
+				设置颜色: <input id="color" style="width:90px;" value="#000000"/>
+			</div>
+			<div style="margin-top:10px" />
+			<a id="upload" href="#">打开图像</a>
+			<a id="download" href="#">保存图像</a>
+			<a id="undo" href="#">撤销编辑</a>
+			<a id="width-add" href="#">增加宽度</a>
+			<a id="width-del" href="#">减小宽度</a>
+			<a id="height-add" href="#">增加高度</a>
+			<a id="height-del" href="#">减小高度</a>
+			<a id="h-flip" href="#">水平翻转</a>
+			<a id="v-flip" href="#">垂直翻转</a>
+			<a id="rotate" href="#">旋转</a>
+			<a id="scale-up" href="#">放大</a>
+			<a id="scale-down" href="#">缩小</a>
+			<div style="margin-top:20px">
+				<canvas id="myCanvas" style="border:1px solid gray; box-shadow: 5px 5px 5px gray;" height="500" width="800" />
+			</div>
+	</div>
+</body>
+
