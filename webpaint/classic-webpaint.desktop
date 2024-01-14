@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Web Painter
+Name[zh_CN]=画图
+Exec=x-www-browser /usr/share/ubuntu-classic/webpaint/index.html
+Type=Application
+Icon=applications-painting
+Categories=Graphics;GTK;
+StartupNotify=true
