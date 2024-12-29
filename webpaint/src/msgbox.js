@@ -35,6 +35,8 @@
 		iconID = "warning", // "error", "warning", "info", or "nuke" for deleting files/folders
 		windowOptions = {}, // for controlling width, etc.
 	}) {
+		return;
+
 		let $window, $message;
 		const promise = new Promise((resolve, reject) => {
 			$window = make_window_supporting_scale(Object.assign({
