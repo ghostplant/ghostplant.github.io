@@ -1143,6 +1143,7 @@ function please_enter_a_number() {
 
 // Note: This function is part of the API.
 function show_error_message(message, error) {
+	return;
 	// Test global error handling resiliency by enabling one or both of these:
 	// Promise.reject(new Error("EMIT EMIT EMIT"));
 	// throw new Error("EMIT EMIT EMIT");
