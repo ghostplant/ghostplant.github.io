@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>潜艇大战</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  }
+  canvas {
+    border: 2px solid #1a3a5c;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0, 150, 255, 0.3), inset 0 0 60px rgba(0, 50, 100, 0.2);
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+// ==================== 游戏配置 ====================
+const CONFIG = {
+  WIDTH: 960,
+  HEIGHT: 640,
+  PLAYER_SPEED: 4,
+  PLAYER_TORPEDO_SPEED: 7,
+  ENEMY_TORPEDO_SPEED: 4,
+  ENEMY_SPAWN_INTERVAL: 2000,
+  MAX_ENEMIES: 8,
+  BUBBLE_COUNT: 30,
+  STARFISH_COUNT: 5,
+};
+
+// ==================== 画布初始化 ====================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = CONFIG.WIDTH;
+canvas.height = CONFIG.HEIGHT;
+
+// ==================== 游戏状态 ====================
+let gameState = 'menu'; // menu, playing, gameover
+let score = 0;
+let level = 1;
+let killCount = 0;
+let lastSpawnTime = 0;
+let screenShake = 0;
+let screenShakeX = 0;
+let screenShakeY = 0;
+
+// ==================== 输入处理 ====================
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') e.preventDefault();
+  if (gameState === 'menu' && e.code === 'Space') startGame();
+  if (gameState === 'gameover' && e.code === 'Space') startGame();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ==================== 工具函数 ====================
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ==================== 粒子系统 ====================
+let particles = [];
+class Particle {
+  constructor(x, y, vx, vy, life, color, size) {
+    this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+    this.life = life; this.maxLife = life;
+    this.color = color; this.size = size;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.98; this.vy *= 0.98;
+    this.life--;
+  }
+  draw() {
+    const alpha = this.life / this.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnExplosion(x, y, color = '#ff6600', count = 20) {
+  for (let i = 0; i < count; i++) {
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(1, 5);
+    particles.push(new Particle(
+      x, y, Math.cos(angle) * speed, Math.sin(angle) * speed,
+      randInt(20, 50), color, rand(2, 6)
+    ));
+  }
+}
+
+function spawnBubble(x, y) {
+  particles.push(new Particle(
+    x + rand(-5, 5), y, rand(-0.3, 0.3), rand(-2, -0.5),
+    randInt(40, 100), 'rgba(150,220,255,0.4)', rand(2, 5)
+  ));
+}
+
+// ==================== 气泡背景 ====================
+let bubbles = [];
+class Bubble {
+  constructor() { this.reset(); this.y = rand(0, CONFIG.HEIGHT); }
+  reset() {
+    this.x = rand(0, CONFIG.WIDTH);
+    this.y = CONFIG.HEIGHT + rand(10, 50);
+    this.r = rand(2, 8);
+    this.speed = rand(0.3, 1.2);
+    this.wobble = rand(0, Math.PI * 2);
+    this.wobbleSpeed = rand(0.01, 0.03);
+  }
+  update() {
+    this.y -= this.speed;
+    this.wobble += this.wobbleSpeed;
+    this.x += Math.sin(this.wobble) * 0.5;
+    if (this.y < -20) this.reset();
+  }
+  draw() {
+    ctx.strokeStyle = `rgba(100,180,255,${0.15 + this.r / 30})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.stroke();
+    // 高光
+    ctx.fillStyle = `rgba(200,230,255,${0.1 + this.r / 40})`;
+    ctx.beginPath();
+    ctx.arc(this.x - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+for (let i = 0; i < CONFIG.BUBBLE_COUNT; i++) bubbles.push(new Bubble());
+
+// ==================== 海底装饰 ====================
+let seaweeds = [];
+class Seaweed {
+  constructor(x) {
+    this.x = x;
+    this.segments = randInt(5, 10);
+    this.segHeight = rand(12, 20);
+    this.phase = rand(0, Math.PI * 2);
+    this.color = `hsl(${randInt(100, 160)}, ${randInt(40, 70)}%, ${randInt(20, 40)}%)`;
+  }
+  draw(time) {
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let px = this.x, py = CONFIG.HEIGHT;
+    ctx.moveTo(px, py);
+    for (let i = 1; i <= this.segments; i++) {
+      const sway = Math.sin(time * 0.002 + this.phase + i * 0.5) * (i * 2);
+      px = this.x + sway;
+      py = CONFIG.HEIGHT - i * this.segHeight;
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+}
+for (let i = 0; i < 15; i++) seaweeds.push(new Seaweed(rand(20, CONFIG.WIDTH - 20)));
+
+// ==================== 玩家潜艇 ====================
+const player = {
+  x: 120, y: CONFIG.HEIGHT / 2,
+  w: 80, h: 30,
+  hp: 100, maxHp: 100,
+  speed: CONFIG.PLAYER_SPEED,
+  fireRate: 15, fireCooldown: 0,
+  invincible: 0,
+  facing: 1, // 1=right, -1=left
+  propellerAngle: 0,
+  engineOn: false,
+};
+
+function drawSubmarine(x, y, w, h, facing, color, darkColor, isPlayer, propAngle, hp, maxHp) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+
+  // 船体阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(2, 4, w / 2, h / 2 + 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 主船体
+  const grad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  grad.addColorStop(0, color);
+  grad.addColorStop(1, darkColor);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 指挥塔
+  ctx.fillStyle = darkColor;
+  const towerW = w * 0.2, towerH = h * 0.6;
+  ctx.beginPath();
+  ctx.roundRect(-towerW / 2, -h / 2 - towerH + 4, towerW, towerH, [4, 4, 0, 0]);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.stroke();
+
+  // 潜望镜
+  if (isPlayer) {
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2 - towerH + 4);
+    ctx.lineTo(0, -h / 2 - towerH - 10);
+    ctx.lineTo(8, -h / 2 - towerH - 10);
+    ctx.stroke();
+    // 潜望镜镜头
+    ctx.fillStyle = '#5af';
+    ctx.beginPath();
+    ctx.arc(8, -h / 2 - towerH - 10, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 舷窗
+  const portholeCount = 3;
+  for (let i = 0; i < portholeCount; i++) {
+    const px = -w * 0.2 + i * (w * 0.2);
+    const py = 0;
+    ctx.fillStyle = 'rgba(100,200,255,0.5)';
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 螺旋桨
+  ctx.save();
+  ctx.translate(-w / 2 - 6, 0);
+  ctx.rotate(propAngle);
+  ctx.fillStyle = '#888';
+  for (let i = 0; i < 3; i++) {
+    ctx.save();
+    ctx.rotate(i * Math.PI * 2 / 3);
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 鱼雷管
+  ctx.fillStyle = '#333';
+  ctx.fillRect(w / 2 - 4, -3, 10, 6);
+
+  // 尾翼
+  ctx.fillStyle = darkColor;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2 + 5, -h / 2 + 2);
+  ctx.lineTo(-w / 2 - 8, -h / 2 - 10);
+  ctx.lineTo(-w / 2 - 8, -h / 2 + 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-w / 2 + 5, h / 2 - 2);
+  ctx.lineTo(-w / 2 - 8, h / 2 + 10);
+  ctx.lineTo(-w / 2 - 8, h / 2 - 5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // 血条
+  if (hp !== undefined && hp < maxHp) {
+    const barW = w * 0.8;
+    const barH = 5;
+    const barX = x - barW / 2;
+    const barY = y - h / 2 - 22;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+    const ratio = hp / maxHp;
+    const hpColor = ratio > 0.5 ? '#4f4' : ratio > 0.25 ? '#ff0' : '#f44';
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(barX, barY, barW * ratio, barH);
+  }
+}
+
+// ==================== 鱼雷 ====================
+let torpedoes = [];
+class Torpedo {
+  constructor(x, y, vx, vy, isPlayer, color) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.isPlayer = isPlayer;
+    this.color = color || (isPlayer ? '#0ff' : '#f54');
+    this.trail = [];
+    this.alive = true;
+    this.age = 0;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.age++;
+    this.trail.push({ x: this.x, y: this.y, age: 0 });
+    if (this.trail.length > 12) this.trail.shift();
+    this.trail.forEach(t => t.age++);
+    if (this.x < -50 || this.x > CONFIG.WIDTH + 50 || this.y < -50 || this.y > CONFIG.HEIGHT + 50) {
+      this.alive = false;
+    }
+    if (this.age > 300) this.alive = false;
+  }
+  draw() {
+    // 尾迹
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const alpha = (1 - t.age / 20) * 0.5;
+      if (alpha <= 0) continue;
+      ctx.fillStyle = this.isPlayer ? `rgba(0,255,255,${alpha})` : `rgba(255,80,60,${alpha})`;
+      const size = 3 * (1 - t.age / 20);
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, Math.max(0.5, size), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 鱼雷本体
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    const angle = Math.atan2(this.vy, this.vx);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 鱼雷头部
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(6, 0, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ==================== 敌方潜艇 ====================
+let enemies = [];
+class Enemy {
+  constructor(type) {
+    this.type = type || randInt(0, 2); // 0=普通, 1=快速, 2=重型
+    this.alive = true;
+    this.fireCooldown = randInt(60, 150);
+
+    if (this.type === 0) { // 普通
+      this.w = 70; this.h = 26;
+      this.hp = 30 + level * 5; this.maxHp = this.hp;
+      this.speed = rand(1.2, 2);
+      this.color = '#c44'; this.darkColor = '#822';
+      this.score = 100;
+      this.fireInterval = 120;
+    } else if (this.type === 1) { // 快速
+      this.w = 55; this.h = 20;
+      this.hp = 15 + level * 3; this.maxHp = this.hp;
+      this.speed = rand(2.5, 3.5);
+      this.color = '#ca0'; this.darkColor = '#880';
+      this.score = 150;
+      this.fireInterval = 80;
+    } else { // 重型
+      this.w = 95; this.h = 36;
+      this.hp = 80 + level * 10; this.maxHp = this.hp;
+      this.speed = rand(0.6, 1.2);
+      this.color = '#66c'; this.darkColor = '#448';
+      this.score = 250;
+      this.fireInterval = 90;
+    }
+
+    // 从右侧或左侧生成
+    const fromLeft = Math.random() < 0.3;
+    this.facing = fromLeft ? 1 : -1;
+    this.x = fromLeft ? -this.w : CONFIG.WIDTH + this.w;
+    this.y = rand(60, CONFIG.HEIGHT - 80);
+    this.vy = rand(-0.5, 0.5);
+    this.propAngle = 0;
+    this.wobblePhase = rand(0, Math.PI * 2);
+    this.hitFlash = 0;
+  }
+  update(time) {
+    // 移动逻辑
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const d = Math.hypot(dx, dy);
+
+    if (this.type === 1) {
+      // 快速型：蛇形接近
+      this.x += this.facing * this.speed;
+      this.y += Math.sin(time * 0.005 + this.wobblePhase) * 1.5;
+    } else if (this.type === 2) {
+      // 重型：缓慢逼近
+      this.x += this.facing * this.speed;
+      this.y += (dy > 0 ? 0.3 : -0.3);
+    } else {
+      // 普通：巡逻
+      this.x += this.facing * this.speed;
+      this.y += Math.sin(time * 0.003 + this.wobblePhase) * 0.8;
+    }
+
+    // 朝向玩家
+    if (d < 400) {
+      this.facing = dx > 0 ? 1 : -1;
+    }
+
+    this.y = clamp(this.y, 40, CONFIG.HEIGHT - 50);
+    this.propAngle += 0.2;
+    if (this.hitFlash > 0) this.hitFlash--;
+
+    // 射击
+    this.fireCooldown--;
+    if (this.fireCooldown <= 0 && d < 500) {
+      this.fireCooldown = this.fireInterval + randInt(-20, 20);
+      const angle = Math.atan2(dy, dx);
+      const tvx = Math.cos(angle) * CONFIG.ENEMY_TORPEDO_SPEED;
+      const tvy = Math.sin(angle) * CONFIG.ENEMY_TORPEDO_SPEED;
+      torpedoes.push(new Torpedo(this.x + this.facing * this.w / 2, this.y, tvx, tvy, false));
+    }
+
+    // 超出屏幕
+    if (this.x < -150 || this.x > CONFIG.WIDTH + 150) this.alive = false;
+  }
+  draw() {
+    if (this.hitFlash > 0) {
+      ctx.globalAlpha = 0.5 + Math.sin(this.hitFlash * 0.5) * 0.5;
+    }
+    drawSubmarine(this.x, this.y, this.w, this.h, this.facing,
+      this.color, this.darkColor, false, this.propAngle, this.hp, this.maxHp);
+    ctx.globalAlpha = 1;
+
+    // 类型标识
+    if (this.type === 1) {
+      ctx.fillStyle = '#ff0';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡', this.x, this.y - this.h / 2 - 26);
+    } else if (this.type === 2) {
+      ctx.fillStyle = '#aaf';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛡', this.x, this.y - this.h / 2 - 26);
+    }
+  }
+}
+
+// ==================== 道具 ====================
+let powerups = [];
+class Powerup {
+  constructor(x, y, type) {
+    this.x = x; this.y = y;
+    this.type = type; // 'heal', 'rapid', 'shield'
+    this.alive = true;
+    this.age = 0;
+    this.vy = -0.3;
+  }
+  update() {
+    this.y += this.vy;
+    this.age++;
+    if (this.age > 600) this.alive = false;
+    if (this.y < 10) this.vy = Math.abs(this.vy);
+    if (this.y > CONFIG.HEIGHT - 30) this.vy = -Math.abs(this.vy);
+  }
+  draw() {
+    const bob = Math.sin(this.age * 0.05) * 4;
+    const glow = 8 + Math.sin(this.age * 0.08) * 4;
+    ctx.save();
+    ctx.translate(this.x, this.y + bob);
+
+    let icon, color;
+    if (this.type === 'heal') { icon = '❤️'; color = '#f44'; }
+    else if (this.type === 'rapid') { icon = '⚡'; color = '#ff0'; }
+    else { icon = '🛡'; color = '#4af'; }
+
+    ctx.shadowColor = color;
+    ctx.shadowBlur = glow;
+    ctx.font = '22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+// ==================== 水面效果 ====================
+function drawWaterSurface(time) {
+  // 水面光线
+  const grad = ctx.createLinearGradient(0, 0, 0, 60);
+  grad.addColorStop(0, 'rgba(30,80,140,0.6)');
+  grad.addColorStop(1, 'rgba(10,30,60,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CONFIG.WIDTH, 60);
+
+  // 波浪线
+  ctx.strokeStyle = 'rgba(100,180,255,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x < CONFIG.WIDTH; x += 4) {
+    const y = 8 + Math.sin(x * 0.02 + time * 0.002) * 4 + Math.sin(x * 0.01 + time * 0.001) * 3;
+    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // 光柱
+  for (let i = 0; i < 5; i++) {
+    const lx = 100 + i * 200 + Math.sin(time * 0.001 + i) * 30;
+    const lgr = ctx.createLinearGradient(lx, 0, lx + 40, CONFIG.HEIGHT * 0.7);
+    lgr.addColorStop(0, 'rgba(100,180,255,0.06)');
+    lgr.addColorStop(1, 'rgba(100,180,255,0)');
+    ctx.fillStyle = lgr;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    ctx.lineTo(lx + 40, CONFIG.HEIGHT * 0.7);
+    ctx.lineTo(lx + 80, CONFIG.HEIGHT * 0.7);
+    ctx.lineTo(lx + 20, 0);
+    ctx.fill();
+  }
+}
+
+// ==================== 海底地面 ====================
+function drawSeafloor(time) {
+  const grad = ctx.createLinearGradient(0, CONFIG.HEIGHT - 60, 0, CONFIG.HEIGHT);
+  grad.addColorStop(0, 'rgba(20,40,30,0)');
+  grad.addColorStop(0.5, 'rgba(30,50,35,0.5)');
+  grad.addColorStop(1, 'rgba(20,35,25,0.8)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, CONFIG.HEIGHT - 60, CONFIG.WIDTH, 60);
+
+  // 沙地
+  ctx.fillStyle = 'rgba(60,80,50,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(0, CONFIG.HEIGHT);
+  for (let x = 0; x <= CONFIG.WIDTH; x += 20) {
+    const y = CONFIG.HEIGHT - 10 + Math.sin(x * 0.03) * 5;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(CONFIG.WIDTH, CONFIG.HEIGHT);
+  ctx.fill();
+}
+
+// ==================== HUD ====================
+function drawHUD() {
+  // 血条背景
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(20, 18, 204, 24, 6);
+  ctx.fill();
+
+  // 血条
+  const hpRatio = player.hp / player.maxHp;
+  const hpColor = hpRatio > 0.5 ? '#4f4' : hpRatio > 0.25 ? '#ff0' : '#f44';
+  ctx.fillStyle = hpColor;
+  ctx.beginPath();
+  ctx.roundRect(22, 20, 200 * hpRatio, 20, 4);
+  ctx.fill();
+
+  // 血条文字
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`HP ${player.hp}/${player.maxHp}`, 122, 35);
+
+  // 分数
+  ctx.fillStyle = '#0ff';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`得分: ${score}`, CONFIG.WIDTH - 20, 36);
+
+  // 等级
+  ctx.fillStyle = '#ff0';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`等级: ${level}`, CONFIG.WIDTH - 20, 58);
+
+  // 击杀数
+  ctx.fillStyle = '#f84';
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`击杀: ${killCount}`, 20, 58);
+
+  // 道具状态
+  let statusY = 78;
+  if (player.rapidFire > 0) {
+    ctx.fillStyle = '#ff0';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`⚡ 速射 ${Math.ceil(player.rapidFire / 60)}s`, 20, statusY);
+    statusY += 18;
+  }
+  if (player.shield > 0) {
+    ctx.fillStyle = '#4af';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`🛡 护盾 ${Math.ceil(player.shield / 60)}s`, 20, statusY);
+  }
+}
+
+// ==================== 菜单画面 ====================
+function drawMenu(time) {
+  // 背景
+  drawBackground(time);
+
+  // 标题
+  ctx.save();
+  ctx.shadowColor = '#0ff';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = '#0ff';
+  ctx.font = 'bold 56px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('潜艇大战', CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 - 80);
+  ctx.shadowBlur = 0;
+
+  // 副标题
+  ctx.fillStyle = '#8cf';
+  ctx.font = '20px sans-serif';
+  ctx.fillText('SUBMARINE BATTLE', CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 - 45);
+
+  // 装饰线
+  ctx.strokeStyle = 'rgba(0,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(CONFIG.WIDTH / 2 - 150, CONFIG.HEIGHT / 2 - 30);
+  ctx.lineTo(CONFIG.WIDTH / 2 + 150, CONFIG.HEIGHT / 2 - 30);
+  ctx.stroke();
+
+  // 操作说明
+  ctx.fillStyle = '#acd';
+  ctx.font = '16px sans-serif';
+  const instructions = [
+    '🎮 方向键 / WASD — 移动潜艇',
+    '🚀 空格键 — 发射鱼雷',
+    '💥 消灭敌方潜艇获取分数',
+    '❤️ 拾取道具恢复生命 / 增强火力',
+  ];
+  instructions.forEach((text, i) => {
+    ctx.fillText(text, CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 + 10 + i * 28);
+  });
+
+  // 开始提示
+  const blink = Math.sin(time * 0.005) * 0.5 + 0.5;
+  ctx.globalAlpha = 0.5 + blink * 0.5;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText('按 空格键 开始游戏', CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 + 150);
+  ctx.globalAlpha = 1;
+
+  // 展示潜艇
+  drawSubmarine(CONFIG.WIDTH / 2 - 200, CONFIG.HEIGHT / 2 + 150, 80, 30, 1, '#1a8', '#065', true, time * 0.05, 100, 100);
+
+  ctx.restore();
+}
+
+// ==================== 游戏结束画面 ====================
+function drawGameOver(time) {
+  drawBackground(time);
+
+  ctx.save();
+  ctx.shadowColor = '#f44';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = '#f44';
+  ctx.font = 'bold 52px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('游戏结束', CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 - 60);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '24px sans-serif';
+  ctx.fillText(`最终得分: ${score}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2);
+  ctx.fillText(`击杀数: ${killCount}  |  等级: ${level}`, CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 + 36);
+
+  const blink = Math.sin(time * 0.005) * 0.5 + 0.5;
+  ctx.globalAlpha = 0.5 + blink * 0.5;
+  ctx.fillStyle = '#adf';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText('按 空格键 重新开始', CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2 + 100);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ==================== 背景绘制 ====================
+function drawBackground(time) {
+  // 深海渐变
+  const bg = ctx.createLinearGradient(0, 0, 0, CONFIG.HEIGHT);
+  bg.addColorStop(0, '#0a1628');
+  bg.addColorStop(0.3, '#0c1e3a');
+  bg.addColorStop(0.7, '#081828');
+  bg.addColorStop(1, '#061210');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+
+  drawWaterSurface(time);
+  drawSeafloor(time);
+
+  // 海草
+  seaweeds.forEach(s => s.draw(time));
+
+  // 气泡
+  bubbles.forEach(b => { b.update(); b.draw(); });
+}
+
+// ==================== 碰撞检测 ====================
+function rectCollide(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax - aw / 2 < bx + bw / 2 && ax + aw / 2 > bx - bw / 2 &&
+         ay - ah / 2 < by + bh / 2 && ay + ah / 2 > by - bh / 2;
+}
+
+function pointInRect(px, py, rx, ry, rw, rh) {
+  return px > rx - rw / 2 && px < rx + rw / 2 && py > ry - rh / 2 && py < ry + rh / 2;
+}
+
+// ==================== 游戏初始化 ====================
+function startGame() {
+  gameState = 'playing';
+  score = 0;
+  level = 1;
+  killCount = 0;
+  player.x = 120;
+  player.y = CONFIG.HEIGHT / 2;
+  player.hp = 100;
+  player.maxHp = 100;
+  player.invincible = 0;
+  player.rapidFire = 0;
+  player.shield = 0;
+  player.fireCooldown = 0;
+  player.facing = 1;
+  enemies = [];
+  torpedoes = [];
+  particles = [];
+  powerups = [];
+  lastSpawnTime = 0;
+}
+
+// ==================== 主游戏逻辑 ====================
+function updateGame(time) {
+  // 玩家移动
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+  if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+  if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+  if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+
+  player.engineOn = dx !== 0 || dy !== 0;
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.hypot(dx, dy);
+    dx /= len; dy /= len;
+    player.x += dx * player.speed;
+    player.y += dy * player.speed;
+    if (dx !== 0) player.facing = dx > 0 ? 1 : -1;
+  }
+
+  player.x = clamp(player.x, 40, CONFIG.WIDTH - 40);
+  player.y = clamp(player.y, 30, CONFIG.HEIGHT - 40);
+
+  player.propAngle += player.engineOn ? 0.3 : 0.05;
+
+  // 引擎气泡
+  if (player.engineOn && Math.random() < 0.3) {
+    spawnBubble(player.x - player.facing * player.w / 2, player.y);
+  }
+
+  // 射击
+  if (player.fireCooldown > 0) player.fireCooldown--;
+  const fireRate = player.rapidFire > 0 ? 5 : player.fireRate;
+  if (keys['Space'] && player.fireCooldown <= 0) {
+    player.fireCooldown = fireRate;
+    const tx = player.x + player.facing * (player.w / 2 + 10);
+    const ty = player.y;
+    torpedoes.push(new Torpedo(tx, ty, player.facing * CONFIG.PLAYER_TORPEDO_SPEED, 0, true));
+    // 后坐力气泡
+    for (let i = 0; i < 3; i++) spawnBubble(tx, ty);
+  }
+
+  // 道具计时
+  if (player.rapidFire > 0) player.rapidFire--;
+  if (player.shield > 0) player.shield--;
+  if (player.invincible > 0) player.invincible--;
+
+  // 敌人生成
+  const spawnInterval = Math.max(600, CONFIG.ENEMY_SPAWN_INTERVAL - level * 150);
+  if (time - lastSpawnTime > spawnInterval && enemies.length < CONFIG.MAX_ENEMIES + level) {
+    lastSpawnTime = time;
+    const typeWeights = [0.5, 0.3 + level * 0.02, 0.2 + level * 0.03];
+    const r = Math.random();
+    let type = 0;
+    if (r > typeWeights[0]) type = 1;
+    if (r > typeWeights[0] + typeWeights[1]) type = 2;
+    enemies.push(new Enemy(type));
+  }
+
+  // 更新敌人
+  enemies.forEach(e => e.update(time));
+
+  // 更新鱼雷
+  torpedoes.forEach(t => t.update());
+
+  // 更新道具
+  powerups.forEach(p => p.update());
+
+  // 更新粒子
+  particles.forEach(p => p.update());
+  particles = particles.filter(p => p.life > 0);
+
+  // 碰撞：玩家鱼雷 vs 敌人
+  torpedoes.forEach(t => {
+    if (!t.isPlayer || !t.alive) return;
+    enemies.forEach(e => {
+      if (!e.alive) return;
+      if (pointInRect(t.x, t.y, e.x, e.y, e.w + 10, e.h + 10)) {
+        t.alive = false;
+        e.hp -= 20;
+        e.hitFlash = 10;
+        spawnExplosion(t.x, t.y, '#ff8', 8);
+        screenShake = 5;
+        if (e.hp <= 0) {
+          e.alive = false;
+          score += e.score;
+          killCount++;
+          spawnExplosion(e.x, e.y, '#f80', 30);
+          spawnExplosion(e.x, e.y, '#ff0', 15);
+          screenShake = 10;
+          // 掉落道具
+          if (Math.random() < 0.3) {
+            const types = ['heal', 'rapid', 'shield'];
+            powerups.push(new Powerup(e.x, e.y, types[randInt(0, 2)]));
+          }
+        }
+      }
+    });
+  });
+
+  // 碰撞：敌方鱼雷 vs 玩家
+  torpedoes.forEach(t => {
+    if (t.isPlayer || !t.alive) return;
+    if (pointInRect(t.x, t.y, player.x, player.y, player.w, player.h)) {
+      t.alive = false;
+      if (player.shield > 0) {
+        spawnExplosion(t.x, t.y, '#4af', 10);
+      } else if (player.invincible <= 0) {
+        player.hp -= 15;
+        player.invincible = 30;
+        spawnExplosion(t.x, t.y, '#f44', 12);
+        screenShake = 8;
+      }
+    }
+  });
+
+  // 碰撞：敌人 vs 玩家（撞击）
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    if (rectCollide(player.x, player.y, player.w, player.h, e.x, e.y, e.w, e.h)) {
+      if (player.shield > 0) {
+        e.hp -= 50;
+        e.hitFlash = 10;
+        spawnExplosion(e.x, e.y, '#4af', 15);
+        if (e.hp <= 0) {
+          e.alive = false;
+          score += e.score;
+          killCount++;
+          spawnExplosion(e.x, e.y, '#f80', 25);
+        }
+      } else if (player.invincible <= 0) {
+        player.hp -= 25;
+        player.invincible = 60;
+        e.hp -= 30;
+        spawnExplosion((player.x + e.x) / 2, (player.y + e.y) / 2, '#f80', 20);
+        screenShake = 12;
+        if (e.hp <= 0) {
+          e.alive = false;
+          score += e.score;
+          killCount++;
+          spawnExplosion(e.x, e.y, '#f80', 25);
+        }
+      }
+    }
+  });
+
+  // 碰撞：道具 vs 玩家
+  powerups.forEach(p => {
+    if (!p.alive) return;
+    if (dist(player, p) < 30) {
+      p.alive = false;
+      if (p.type === 'heal') {
+        player.hp = Math.min(player.maxHp, player.hp + 30);
+        spawnExplosion(p.x, p.y, '#f44', 10);
+      } else if (p.type === 'rapid') {
+        player.rapidFire = 300; // 5秒
+        spawnExplosion(p.x, p.y, '#ff0', 10);
+      } else if (p.type === 'shield') {
+        player.shield = 360; // 6秒
+        spawnExplosion(p.x, p.y, '#4af', 10);
+      }
+    }
+  });
+
+  // 清理
+  enemies = enemies.filter(e => e.alive);
+  torpedoes = torpedoes.filter(t => t.alive);
+  powerups = powerups.filter(p => p.alive);
+
+  // 升级
+  const newLevel = Math.floor(killCount / 5) + 1;
+  if (newLevel > level) {
+    level = newLevel;
+    // 升级奖励
+    player.maxHp = 100 + level * 10;
+    player.hp = Math.min(player.hp + 20, player.maxHp);
+    spawnExplosion(player.x, player.y, '#0ff', 30);
+  }
+
+  // 死亡
+  if (player.hp <= 0) {
+    player.hp = 0;
+    gameState = 'gameover';
+    spawnExplosion(player.x, player.y, '#f44', 40);
+    spawnExplosion(player.x, player.y, '#ff0', 30);
+    screenShake = 20;
+  }
+
+  // 屏幕震动
+  if (screenShake > 0) {
+    screenShakeX = rand(-screenShake, screenShake);
+    screenShakeY = rand(-screenShake, screenShake);
+    screenShake *= 0.85;
+    if (screenShake < 0.5) screenShake = 0;
+  } else {
+    screenShakeX = 0;
+    screenShakeY = 0;
+  }
+}
+
+// ==================== 绘制游戏 ====================
+function drawGame(time) {
+  ctx.save();
+  ctx.translate(screenShakeX, screenShakeY);
+
+  drawBackground(time);
+
+  // 道具
+  powerups.forEach(p => p.draw());
+
+  // 敌人
+  enemies.forEach(e => e.draw());
+
+  // 玩家
+  if (player.invincible > 0 && Math.floor(player.invincible / 3) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+  // 护盾效果
+  if (player.shield > 0) {
+    ctx.strokeStyle = `rgba(60,160,255,${0.3 + Math.sin(time * 0.01) * 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.w / 2 + 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(60,160,255,0.05)`;
+    ctx.fill();
+  }
+  drawSubmarine(player.x, player.y, player.w, player.h, player.facing,
+    '#1a8', '#065', true, player.propAngle, player.hp, player.maxHp);
+  ctx.globalAlpha = 1;
+
+  // 鱼雷
+  torpedoes.forEach(t => t.draw());
+
+  // 粒子
+  particles.forEach(p => p.draw());
+
+  // 声纳效果（装饰）
+  if (gameState === 'playing') {
+    const sonarRadius = (time % 3000) / 3000 * 300;
+    const sonarAlpha = 1 - sonarRadius / 300;
+    ctx.strokeStyle = `rgba(0,255,200,${sonarAlpha * 0.1})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, sonarRadius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  drawHUD();
+}
+
+// ==================== 主循环 ====================
+let lastTime = 0;
+function gameLoop(time) {
+  requestAnimationFrame(gameLoop);
+
+  if (gameState === 'menu') {
+    drawMenu(time);
+  } else if (gameState === 'playing') {
+    updateGame(time);
+    drawGame(time);
+  } else if (gameState === 'gameover') {
+    // 继续更新粒子
+    particles.forEach(p => p.update());
+    particles = particles.filter(p => p.life > 0);
+    if (screenShake > 0) {
+      screenShakeX = rand(-screenShake, screenShake);
+      screenShakeY = rand(-screenShake, screenShake);
+      screenShake *= 0.9;
+      if (screenShake < 0.5) screenShake = 0;
+    } else {
+      screenShakeX = 0; screenShakeY = 0;
+    }
+    drawGameOver(time);
+  }
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

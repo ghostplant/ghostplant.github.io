@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大鱼吃小鱼</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #001220;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; }
+  #ui {
+    position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 10;
+  }
+  #score-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 28px;
+  }
+  #score {
+    color: #fff; font-size: 22px; font-weight: 700;
+    text-shadow: 0 2px 12px rgba(0,0,0,.6);
+  }
+  #score span { color: #ffe066; }
+  #size-label {
+    color: #a0d8ef; font-size: 16px; font-weight: 600;
+    text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  }
+  #overlay {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,10,25,.82);
+    backdrop-filter: blur(6px);
+    transition: opacity .4s;
+  }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  #overlay h1 {
+    font-size: 52px; color: #ffe066; margin-bottom: 8px;
+    text-shadow: 0 4px 24px rgba(255,224,102,.4);
+  }
+  #overlay h2 {
+    font-size: 28px; color: #ff6b6b; margin-bottom: 8px;
+    text-shadow: 0 4px 16px rgba(255,107,107,.4);
+  }
+  #overlay p {
+    color: #c0dce8; font-size: 17px; margin-bottom: 28px; max-width: 420px;
+    text-align: center; line-height: 1.7;
+  }
+  #overlay .final-score {
+    color: #ffe066; font-size: 24px; font-weight: 700; margin-bottom: 24px;
+  }
+  #overlay button {
+    pointer-events: auto;
+    padding: 14px 48px; font-size: 20px; font-weight: 700;
+    border: none; border-radius: 40px; cursor: pointer;
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: #fff; box-shadow: 0 4px 24px rgba(0,114,255,.45);
+    transition: transform .15s, box-shadow .15s;
+  }
+  #overlay button:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 32px rgba(0,114,255,.65);
+  }
+  #tip {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.35); font-size: 13px; pointer-events: none; z-index: 10;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div id="score-bar">
+    <div id="score">得分: <span id="score-val">0</span></div>
+    <div id="size-label">等级: <span id="size-val">1</span></div>
+  </div>
+</div>
+<div id="overlay">
+  <h1>🐟 大鱼吃小鱼</h1>
+  <p>移动鼠标控制你的鱼，吃掉比你小的鱼来长大！<br>小心别被大鱼吃掉！</p>
+  <button id="start-btn">开始游戏</button>
+</div>
+<div id="tip">鼠标 / 触屏控制移动</div>
+
+<script>
+// ─── 常量 & 工具 ─────────────────────────────────
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const scoreVal = document.getElementById('score-val');
+const sizeVal = document.getElementById('size-val');
+const startBtn = document.getElementById('start-btn');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ─── 颜色方案 ─────────────────────────────────────
+const FISH_PALETTES = [
+  { body: '#ff6b6b', fin: '#c0392b', belly: '#f9c0c0' },
+  { body: '#ffa502', fin: '#cf7900', belly: '#ffe0a0' },
+  { body: '#2ed573', fin: '#1e8c4a', belly: '#b8f0d0' },
+  { body: '#1e90ff', fin: '#0a5eb8', belly: '#a0d0ff' },
+  { body: '#a55eea', fin: '#6c3ab0', belly: '#d8b8ff' },
+  { body: '#ff6348', fin: '#b8372a', belly: '#ffc0b0' },
+  { body: '#ffd32a', fin: '#c4a010', belly: '#fff5b0' },
+  { body: '#05c46b', fin: '#038848', belly: '#a0f0c8' },
+  { body: '#0be881', fin: '#089958', belly: '#b0f8d8' },
+  { body: '#ff5e57', fin: '#b83a34', belly: '#ffc0be' },
+  { body: '#00d2d3', fin: '#009a9b', belly: '#a0f0f0' },
+  { body: '#f368e0', fin: '#a840b0', belly: '#f8c0f0' },
+];
+
+const PLAYER_PALETTE = { body: '#00bfff', fin: '#0070cc', belly: '#b0e8ff' };
+
+// ─── 气泡 ─────────────────────────────────────────
+class Bubble {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = rand(0, W);
+    this.y = rand(H, H + 300);
+    this.r = rand(2, 7);
+    this.speed = rand(0.3, 1.2);
+    this.wobble = rand(0, Math.PI * 2);
+    this.wobbleAmp = rand(10, 30);
+    this.wobbleSpd = rand(0.005, 0.02);
+    this.alpha = rand(0.08, 0.25);
+  }
+  update() {
+    this.y -= this.speed;
+    this.wobble += this.wobbleSpd;
+    this.x += Math.sin(this.wobble) * 0.3;
+    if (this.y < -20) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,230,255,${this.alpha})`;
+    ctx.fill();
+  }
+}
+
+// ─── 水草 ─────────────────────────────────────────
+class Seaweed {
+  constructor(x) {
+    this.x = x;
+    this.segments = randInt(5, 9);
+    this.segH = rand(22, 38);
+    this.phase = rand(0, Math.PI * 2);
+    this.speed = rand(0.008, 0.02);
+    this.color = `hsl(${randInt(120,170)}, ${randInt(40,70)}%, ${randInt(18,32)}%)`;
+    this.width = rand(6, 14);
+  }
+  draw(t) {
+    ctx.save();
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = this.width;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let px = this.x, py = H;
+    ctx.moveTo(px, py);
+    for (let i = 1; i <= this.segments; i++) {
+      const sway = Math.sin(t * this.speed + this.phase + i * 0.5) * (6 + i * 2);
+      px = this.x + sway;
+      py = H - i * this.segH;
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ─── 鱼 ───────────────────────────────────────────
+class Fish {
+  constructor(x, y, size, palette, isPlayer = false) {
+    this.x = x;
+    this.y = y;
+    this.size = size; // radius-like metric
+    this.palette = palette;
+    this.isPlayer = isPlayer;
+    this.angle = rand(0, Math.PI * 2);
+    this.targetAngle = this.angle;
+    this.speed = isPlayer ? 0 : rand(0.6, 2.2);
+    this.turnTimer = rand(0, 200);
+    this.alive = true;
+    this.tailPhase = rand(0, Math.PI * 2);
+    this.eyeDir = 0;
+    // AI
+    this.vx = Math.cos(this.angle) * this.speed;
+    this.vy = Math.sin(this.angle) * this.speed;
+    this.fleeTimer = 0;
+  }
+
+  get radius() { return this.size; }
+
+  update(dt, player) {
+    this.tailPhase += 0.08 + this.speed * 0.02;
+
+    if (this.isPlayer) {
+      // smooth follow mouse
+      const dx = mouseX - this.x;
+      const dy = mouseY - this.y;
+      const d = Math.hypot(dx, dy);
+      const maxSpeed = 3.5 + this.size * 0.04;
+      const accel = 0.12;
+      if (d > 4) {
+        this.vx = lerp(this.vx, (dx / d) * Math.min(maxSpeed, d * 0.06), accel);
+        this.vy = lerp(this.vy, (dy / d) * Math.min(maxSpeed, d * 0.06), accel);
+      } else {
+        this.vx *= 0.92;
+        this.vy *= 0.92;
+      }
+      this.x += this.vx;
+      this.y += this.vy;
+      // boundary
+      this.x = clamp(this.x, this.size, W - this.size);
+      this.y = clamp(this.y, this.size, H - this.size);
+      // angle
+      if (Math.hypot(this.vx, this.vy) > 0.3) {
+        this.targetAngle = Math.atan2(this.vy, this.vx);
+      }
+      this.angle = lerpAngle(this.angle, this.targetAngle, 0.12);
+      return;
+    }
+
+    // AI behavior
+    this.turnTimer -= dt;
+    if (this.turnTimer <= 0) {
+      this.turnTimer = rand(80, 300);
+      this.targetAngle = rand(0, Math.PI * 2);
+      this.speed = rand(0.5, 2.0);
+    }
+
+    // Flee from bigger player
+    const dp = dist(this, player);
+    if (dp < 180 + player.size && player.size > this.size * 0.9 && player.alive) {
+      const fleeAngle = Math.atan2(this.y - player.y, this.x - player.x);
+      this.targetAngle = fleeAngle;
+      this.speed = 2.8;
+      this.fleeTimer = 30;
+    }
+
+    // Chase smaller player
+    if (dp < 250 + player.size && this.size > player.size * 1.2 && player.alive && this.fleeTimer <= 0) {
+      const chaseAngle = Math.atan2(player.y - this.y, player.x - this.x);
+      this.targetAngle = chaseAngle;
+      this.speed = 2.2;
+    }
+
+    if (this.fleeTimer > 0) this.fleeTimer -= dt;
+
+    this.angle = lerpAngle(this.angle, this.targetAngle, 0.04);
+    this.vx = lerp(this.vx, Math.cos(this.angle) * this.speed, 0.05);
+    this.vy = lerp(this.vy, Math.sin(this.angle) * this.speed, 0.05);
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Wrap around edges
+    const margin = this.size * 2;
+    if (this.x < -margin) this.x = W + margin;
+    if (this.x > W + margin) this.x = -margin;
+    if (this.y < -margin) this.y = H + margin;
+    if (this.y > H + margin) this.y = -margin;
+  }
+
+  draw() {
+    const s = this.size;
+    const tailSwing = Math.sin(this.tailPhase) * 0.3;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    // Tail
+    const tailX = -s * 1.1;
+    const tailSize = s * 0.7;
+    ctx.save();
+    ctx.translate(tailX, 0);
+    ctx.rotate(tailSwing);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-tailSize, -tailSize * 0.7);
+    ctx.quadraticCurveTo(-tailSize * 0.4, 0, -tailSize, tailSize * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = this.palette.fin;
+    ctx.fill();
+    ctx.restore();
+
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 1.15, s * 0.72, 0, 0, Math.PI * 2);
+    ctx.fillStyle = this.palette.body;
+    ctx.fill();
+
+    // Belly
+    ctx.beginPath();
+    ctx.ellipse(s * 0.1, s * 0.15, s * 0.75, s * 0.35, 0, 0, Math.PI);
+    ctx.fillStyle = this.palette.belly;
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Dorsal fin
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.2, -s * 0.65);
+    ctx.quadraticCurveTo(s * 0.15, -s * 1.15, s * 0.5, -s * 0.6);
+    ctx.fillStyle = this.palette.fin;
+    ctx.fill();
+
+    // Pectoral fin
+    ctx.beginPath();
+    ctx.moveTo(s * 0.1, s * 0.35);
+    ctx.quadraticCurveTo(s * 0.05, s * 0.85, -s * 0.35, s * 0.55);
+    ctx.quadraticCurveTo(-s * 0.05, s * 0.35, s * 0.1, s * 0.35);
+    ctx.fillStyle = this.palette.fin;
+    ctx.globalAlpha = 0.7;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Eye
+    const eyeX = s * 0.55;
+    const eyeY = -s * 0.15;
+    const eyeR = s * 0.18;
+    // white
+    ctx.beginPath();
+    ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    // pupil
+    ctx.beginPath();
+    ctx.arc(eyeX + eyeR * 0.2, eyeY, eyeR * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = '#111';
+    ctx.fill();
+    // highlight
+    ctx.beginPath();
+    ctx.arc(eyeX + eyeR * 0.35, eyeY - eyeR * 0.25, eyeR * 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    // Mouth
+    ctx.beginPath();
+    ctx.arc(s * 0.95, s * 0.12, s * 0.1, 0.2, Math.PI - 0.2);
+    ctx.strokeStyle = this.palette.fin;
+    ctx.lineWidth = Math.max(1, s * 0.04);
+    ctx.stroke();
+
+    // Player glow
+    if (this.isPlayer) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 1.4, s * 0.95, 0, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(0, 0, s * 0.3, 0, 0, s * 1.4);
+      g.addColorStop(0, 'rgba(0,191,255,0.12)');
+      g.addColorStop(1, 'rgba(0,191,255,0)');
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+function lerpAngle(a, b, t) {
+  let diff = b - a;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return a + diff * t;
+}
+
+// ─── 粒子特效 ─────────────────────────────────────
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    this.vx = rand(-3, 3);
+    this.vy = rand(-3, 3);
+    this.life = 1;
+    this.decay = rand(0.015, 0.04);
+    this.r = rand(2, 6);
+    this.color = color;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.97;
+    this.vy *= 0.97;
+    this.life -= this.decay;
+  }
+  draw() {
+    ctx.globalAlpha = this.life;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ─── 游戏状态 ─────────────────────────────────────
+let state = 'menu'; // menu | playing | gameover
+let player, fishes, bubbles, seaweeds, particles;
+let score, level, spawnTimer, gameTime;
+let mouseX = W / 2, mouseY = H / 2;
+
+function initGame() {
+  score = 0;
+  level = 1;
+  gameTime = 0;
+  spawnTimer = 0;
+  player = new Fish(W / 2, H / 2, 18, PLAYER_PALETTE, true);
+  fishes = [];
+  particles = [];
+  bubbles = [];
+  seaweeds = [];
+
+  for (let i = 0; i < 50; i++) bubbles.push(new Bubble());
+  for (let i = 0; i < 12; i++) seaweeds.push(new Seaweed(rand(30, W - 30)));
+
+  // Initial fish
+  for (let i = 0; i < 30; i++) spawnFish();
+}
+
+function spawnFish() {
+  const palette = FISH_PALETTES[randInt(0, FISH_PALETTES.length - 1)];
+  // Size distribution: mostly smaller or similar to player, some bigger
+  let size;
+  const r = Math.random();
+  if (r < 0.55) {
+    size = rand(6, player.size * 0.85);
+  } else if (r < 0.8) {
+    size = rand(player.size * 0.5, player.size * 1.3);
+  } else {
+    size = rand(player.size * 1.2, player.size * 2.5);
+  }
+  size = clamp(size, 5, 120);
+
+  // Spawn off-screen or at edges
+  let x, y;
+  const side = randInt(0, 3);
+  const margin = size * 2;
+  if (side === 0) { x = rand(-margin, W + margin); y = -margin; }
+  else if (side === 1) { x = W + margin; y = rand(-margin, H + margin); }
+  else if (side === 2) { x = rand(-margin, W + margin); y = H + margin; }
+  else { x = -margin; y = rand(-margin, H + margin); }
+
+  const fish = new Fish(x, y, size, palette);
+  fishes.push(fish);
+}
+
+function spawnParticles(x, y, color, count = 12) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y, color));
+  }
+}
+
+// ─── 输入 ─────────────────────────────────────────
+canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+}, { passive: false });
+canvas.addEventListener('touchstart', e => {
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+});
+
+startBtn.addEventListener('click', () => {
+  initGame();
+  state = 'playing';
+  overlay.classList.add('hidden');
+});
+
+// ─── 绘制背景 ─────────────────────────────────────
+function drawBackground(t) {
+  // Gradient ocean
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#001830');
+  grad.addColorStop(0.4, '#002848');
+  grad.addColorStop(1, '#001020');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Light rays
+  ctx.save();
+  ctx.globalAlpha = 0.04;
+  for (let i = 0; i < 5; i++) {
+    const rx = W * 0.15 + i * W * 0.18 + Math.sin(t * 0.0003 + i) * 40;
+    const rw = 60 + Math.sin(t * 0.0005 + i * 2) * 20;
+    const grad2 = ctx.createLinearGradient(rx, 0, rx, H * 0.7);
+    grad2.addColorStop(0, '#80d0ff');
+    grad2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad2;
+    ctx.beginPath();
+    ctx.moveTo(rx - rw / 2, 0);
+    ctx.lineTo(rx + rw / 2, 0);
+    ctx.lineTo(rx + rw * 1.5, H * 0.7);
+    ctx.lineTo(rx - rw, H * 0.7);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Seaweed
+  for (const sw of seaweeds) sw.draw(t);
+
+  // Bubbles
+  for (const b of bubbles) { b.update(); b.draw(); }
+
+  // Sandy bottom
+  const sandGrad = ctx.createLinearGradient(0, H - 40, 0, H);
+  sandGrad.addColorStop(0, 'rgba(60,40,20,0)');
+  sandGrad.addColorStop(1, 'rgba(60,40,20,0.35)');
+  ctx.fillStyle = sandGrad;
+  ctx.fillRect(0, H - 40, W, 40);
+}
+
+// ─── 大小指示器 ───────────────────────────────────
+function drawSizeIndicator() {
+  // Show which fish you can eat
+  for (const f of fishes) {
+    if (!f.alive) continue;
+    const d = dist(player, f);
+    if (d > 300) continue;
+    if (f.size < player.size * 0.95) {
+      // Can eat - green dot
+      ctx.beginPath();
+      ctx.arc(f.x, f.y - f.size - 8, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(46,213,115,0.7)';
+      ctx.fill();
+    } else if (f.size > player.size * 1.1) {
+      // Danger - red dot
+      ctx.beginPath();
+      ctx.arc(f.x, f.y - f.size - 8, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,107,107,0.7)';
+      ctx.fill();
+    }
+  }
+}
+
+// ─── 游戏结束 ─────────────────────────────────────
+function showGameOver() {
+  state = 'gameover';
+  overlay.classList.remove('hidden');
+  overlay.innerHTML = `
+    <h2>游戏结束！</h2>
+    <div class="final-score">最终得分: ${score}</div>
+    <p>你长到了等级 ${level}，吃了 ${score} 条鱼！<br>再试一次，看看能不能变得更大！</p>
+    <button id="restart-btn">再来一次</button>
+  `;
+  document.getElementById('restart-btn').addEventListener('click', () => {
+    initGame();
+    state = 'playing';
+    overlay.classList.add('hidden');
+  });
+}
+
+// ─── 主循环 ───────────────────────────────────────
+let lastTime = 0;
+function gameLoop(timestamp) {
+  const dt = Math.min(timestamp - lastTime, 50);
+  lastTime = timestamp;
+
+  ctx.clearRect(0, 0, W, H);
+  drawBackground(timestamp);
+
+  if (state === 'playing') {
+    gameTime += dt;
+    spawnTimer += dt;
+
+    // Spawn new fish periodically
+    const spawnInterval = Math.max(300, 1200 - level * 60);
+    if (spawnTimer > spawnInterval && fishes.length < 50 + level * 3) {
+      spawnFish();
+      spawnTimer = 0;
+    }
+
+    // Update player
+    player.update(dt, player);
+
+    // Update & draw fish
+    for (const f of fishes) {
+      if (!f.alive) continue;
+      f.update(dt, player);
+    }
+
+    // Collision detection
+    for (const f of fishes) {
+      if (!f.alive) continue;
+      const d = dist(player, f);
+      const touchDist = player.size * 0.8 + f.size * 0.8;
+      if (d < touchDist) {
+        if (player.size > f.size * 0.9) {
+          // Eat the fish!
+          f.alive = false;
+          score++;
+          // Grow
+          const growth = f.size * 0.12;
+          player.size += growth;
+          // Level up check
+          const newLevel = Math.floor(player.size / 15);
+          if (newLevel > level) level = newLevel;
+          // Particles
+          spawnParticles(f.x, f.y, f.palette.body, 10);
+        } else if (f.size > player.size * 1.1) {
+          // Player gets eaten
+          spawnParticles(player.x, player.y, '#ff6b6b', 25);
+          player.alive = false;
+          setTimeout(showGameOver, 600);
+          state = 'dying';
+        }
+      }
+    }
+
+    // Remove dead fish
+    fishes = fishes.filter(f => f.alive);
+
+    // Draw size indicators
+    drawSizeIndicator();
+
+    // Draw fish (smaller first, bigger on top)
+    const sortedFish = [...fishes].sort((a, b) => a.size - b.size);
+    for (const f of sortedFish) f.draw();
+
+    // Draw player
+    if (player.alive) player.draw();
+
+    // Particles
+    for (const p of particles) { p.update(); p.draw(); }
+    particles = particles.filter(p => p.life > 0);
+
+    // UI
+    scoreVal.textContent = score;
+    sizeVal.textContent = level;
+
+    // Draw cursor
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+  } else if (state === 'dying') {
+    // Still render fish
+    for (const f of fishes) { f.update(dt, player); f.draw(); }
+    for (const p of particles) { p.update(); p.draw(); }
+    particles = particles.filter(p => p.life > 0);
+  } else {
+    // Menu - animate some fish in background
+    if (!fishes || fishes.length === 0) {
+      fishes = [];
+      bubbles = [];
+      seaweeds = [];
+      for (let i = 0; i < 50; i++) bubbles.push(new Bubble());
+      for (let i = 0; i < 12; i++) seaweeds.push(new Seaweed(rand(30, W - 30)));
+      for (let i = 0; i < 15; i++) {
+        const palette = FISH_PALETTES[randInt(0, FISH_PALETTES.length - 1)];
+        const f = new Fish(rand(0, W), rand(0, H), rand(10, 40), palette);
+        f.speed = rand(0.3, 1.2);
+        fishes.push(f);
+      }
+      player = { x: -999, y: -999, size: 0, alive: false };
+    }
+    for (const f of fishes) f.update(dt, player);
+    for (const f of fishes) f.draw();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── 启动 ─────────────────────────────────────────
+initGame();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
