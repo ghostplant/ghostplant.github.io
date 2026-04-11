@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<!-- saved from url=(0035)http://4.213.211.16:10082/game.html -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五格俄罗斯方块</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0c0c1d,#1a1a3e,#0c0c1d);display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Segoe UI','Microsoft YaHei',sans-serif;color:#e0e0e0;overflow:hidden}
+.game-container{display:flex;gap:24px;align-items:flex-start;padding:20px}
+.game-wrapper{position:relative}
+#gameCanvas{border:2px solid #3a3a5c;border-radius:8px;box-shadow:0 0 30px rgba(100,100,255,.15)}
+.sidebar{width:200px;display:flex;flex-direction:column;gap:14px}
+.panel{background:rgba(30,30,60,.85);border:1px solid #3a3a5c;border-radius:8px;padding:14px}
+.panel h3{font-size:13px;color:#8888aa;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px}
+#nextCanvas{display:block;margin:0 auto;border-radius:4px}
+.stat{display:flex;justify-content:space-between;margin-bottom:5px;font-size:14px}
+.stat-value{color:#00f5ff;font-weight:bold;font-size:17px}
+.controls{font-size:12px;color:#7777aa;line-height:2}
+.controls kbd{background:#2a2a4a;padding:2px 7px;border-radius:4px;border:1px solid #4a4a6a;font-family:monospace;color:#bbb;font-size:11px}
+.legend{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+.legend-color{width:16px;height:16px;border-radius:3px;flex-shrink:0}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.78);display:flex;justify-content:center;align-items:center;border-radius:8px;z-index:10;flex-direction:column}
+.overlay-title{font-size:26px;font-weight:bold;margin-bottom:10px;background:linear-gradient(90deg,#00f5ff,#ff6bff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
+.overlay-sub{font-size:14px;color:#8888aa;text-align:center}
+</style>
+</head>
+<body>
+<div class="game-container">
+  <div class="game-wrapper">
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div class="overlay" id="overlay" style="display: none;">
+      <div class="overlay-title" id="overlayTitle">五格俄罗斯方块</div>
+      <div class="overlay-sub" id="overlaySub">按任意键开始游戏</div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="panel">
+      <h3>下一个</h3>
+      <canvas id="nextCanvas" width="180" height="150"></canvas>
+    </div>
+    <div class="panel">
+      <h3>统计</h3>
+      <div class="stat"><span>分数</span><span class="stat-value" id="scoreVal">0</span></div>
+      <div class="stat"><span>等级</span><span class="stat-value" id="levelVal">1</span></div>
+      <div class="stat"><span>行数</span><span class="stat-value" id="linesVal">0</span></div>
+    </div>
+    <div class="panel">
+      <h3>特殊方块</h3>
+      <div class="legend">
+        <div class="legend-color" style="background:#ff2222;box-shadow:0 0 6px #ff0000"></div>
+        <span>🔫 枪 — 按↑射击下方</span>
+      </div>
+      <div class="legend">
+        <div class="legend-color" style="background:#ffee00;box-shadow:0 0 6px #ffff00"></div>
+        <span>⚡ 闪光 — 穿透填底</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>操作</h3>
+      <div class="controls">
+        <kbd>←</kbd><kbd>→</kbd> 移动<br>
+        <kbd>↑</kbd> 旋转 / 射击<br>
+        <kbd>↓</kbd> 加速下落<br>
+        <kbd>空格</kbd> 硬降<br>
+        <kbd>P</kbd> 暂停
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== 配置 =====================
+const COLS = 10, ROWS = 20, CELL = 30;
+const GUN_PROB   = 0.05;  // 枪出现概率 5%
+const FLASH_PROB  = 0.50;  // 闪光格出现概率 50%（可调整）
+
+// ===================== 五格方块定义（12种） =====================
+const PENTOMINOES = {
+  F:{shape:[[0,1],[0,2],[1,0],[1,1],[2,1]],color:'#ff6b6b'},
+  I:{shape:[[0,0],[0,1],[0,2],[0,3],[0,4]],color:'#00f5ff'},
+  L:{shape:[[0,0],[1,0],[2,0],[3,0],[3,1]],color:'#ffd93d'},
+  N:{shape:[[0,1],[1,0],[1,1],[2,0],[3,0]],color:'#6bcb77'},
+  P:{shape:[[0,0],[0,1],[1,0],[1,1],[2,0]],color:'#4d96ff'},
+  T:{shape:[[0,0],[0,1],[0,2],[1,1],[2,1]],color:'#ff6bff'},
+  U:{shape:[[0,0],[0,2],[1,0],[1,1],[1,2]],color:'#ff9f43'},
+  V:{shape:[[0,0],[1,0],[2,0],[2,1],[2,2]],color:'#a29bfe'},
+  W:{shape:[[0,0],[1,0],[1,1],[2,1],[2,2]],color:'#fd79a8'},
+  X:{shape:[[0,1],[1,0],[1,1],[1,2],[2,1]],color:'#00cec9'},
+  Y:{shape:[[0,1],[1,0],[1,1],[2,1],[3,1]],color:'#e17055'},
+  Z:{shape:[[0,0],[0,1],[1,1],[2,1],[2,2]],color:'#74b9ff'}
+};
+const PENTO_KEYS = Object.keys(PENTOMINOES);
+
+// ===================== 画布 =====================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = COLS*CELL; canvas.height = ROWS*CELL;
+const nCanvas = document.getElementById('nextCanvas');
+const nctx = nCanvas.getContext('2d');
+nCanvas.width = 6*CELL; nCanvas.height = 5*CELL;
+
+// ===================== 游戏状态 =====================
+let board, cur, nxt, score, level, linesTotal;
+let gameOver, paused, started;
+let dropTimer, dropInterval, lastTime;
+let effects, particles, bag;
+let shakeX, shakeY, shakeTimer;
+
+function initState(){
+  board = Array.from({length:ROWS},()=>new Array(COLS).fill(0));
+  score=0; level=1; linesTotal=0;
+  gameOver=false; paused=false; started=false;
+  dropTimer=0; dropInterval=1000; lastTime=0;
+  effects=[]; particles=[]; bag=[];
+  shakeX=0; shakeY=0; shakeTimer=0;
+  cur=null; nxt=null;
+}
+
+// ===================== 随机袋 =====================
+function fillBag(){
+  bag=[...PENTO_KEYS];
+  for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
+}
+function nextFromBag(){if(!bag.length)fillBag();return bag.pop();}
+
+// ===================== 创建方块 =====================
+function createPiece(){
+  const r=Math.random();
+  if(r<GUN_PROB) return {type:'gun',shape:[[0,0]],row:0,col:Math.floor(COLS/2),color:'#ff2222'};
+  if(r<GUN_PROB+FLASH_PROB) return {type:'flash',shape:[[0,0]],row:0,col:Math.floor(COLS/2),color:'#ffee00'};
+  const name=nextFromBag(), p=PENTOMINOES[name];
+  const shape=p.shape.map(([r,c])=>[r,c]);
+  const maxC=Math.max(...shape.map(([,c])=>c));
+  return {type:'pentomino',shape,row:0,col:Math.floor((COLS-maxC)/2),color:p.color,name};
+}
+
+// ===================== 旋转 =====================
+function rotateShape(shape){
+  const rot=shape.map(([r,c])=>[c,-r]);
+  const minR=Math.min(...rot.map(([r])=>r)), minC=Math.min(...rot.map(([,c])=>c));
+  return rot.map(([r,c])=>[r-minR,c-minC]);
+}
+
+// ===================== 碰撞检测 =====================
+function isValid(shape,row,col){
+  for(const[dr,dc]of shape){
+    const r=row+dr, c=col+dc;
+    if(r<0||r>=ROWS||c<0||c>=COLS)return false;
+    if(r>=0&&board[r][c])return false;
+  }
+  return true;
+}
+
+// ===================== 放置方块 =====================
+function placePiece(p){
+  if(p.type==='flash'){
+    for(let r=ROWS-1;r>=0;r--){
+      if(!board[r][p.col]){
+        board[r][p.col]=p.color;
+        addEffect('flashplace',r,p.col);
+        addParticles(p.col*CELL+CELL/2, r*CELL+CELL/2, p.color, 10);
+        return;
+      }
+    }
+    return; // 列满，消失
+  }
+  for(const[dr,dc]of p.shape){
+    const r=p.row+dr, c=p.col+dc;
+    if(r>=0&&r<ROWS&&c>=0&&c<COLS) board[r][c]=p.color;
+  }
+}
+
+// ===================== 消行 =====================
+function clearLines(){
+  let cleared=0;
+  for(let r=ROWS-1;r>=0;r--){
+    if(board[r].every(c=>c!==0)){
+      board.splice(r,1);
+      board.unshift(new Array(COLS).fill(0));
+      cleared++; r++;
+    }
+  }
+  if(cleared){
+    addEffect('screenflash',0,0);
+    const pts=[0,100,300,500,800,1200];
+    score+=(pts[cleared]||cleared*400)*level;
+    linesTotal+=cleared;
+    level=Math.floor(linesTotal/10)+1;
+    dropInterval=Math.max(80,1000-(level-1)*75);
+    updateUI();
+  }
+}
+
+// ===================== 枪射击 =====================
+function gunShoot(){
+  if(!cur||cur.type!=='gun')return;
+  const col=cur.col, gunRow=cur.row;
+  for(let r=gunRow+1;r<ROWS;r++){
+    if(board[r][col]){
+      addEffect('laser',gunRow,col,r);
+      addEffect('muzzle',gunRow,col);
+      addParticles(col*CELL+CELL/2, r*CELL+CELL/2, board[r][col], 15);
+      board[r][col]=0;
+      score+=10; updateUI();
+      shakeTimer=6;
+      return;
+    }
+  }
+  // 没有目标，激光到底
+  addEffect('laser',gunRow,col,ROWS-1);
+  addEffect('muzzle',gunRow,col);
+}
+
+// ===================== 移动 =====================
+function moveDown(){
+  if(!cur)return false;
+  if(cur.type==='flash'){
+    if(cur.row+1<ROWS){cur.row++;return true;}
+    placePiece(cur); clearLines(); spawnNext(); return false;
+  }
+  if(isValid(cur.shape,cur.row+1,cur.col)){cur.row++;return true;}
+  placePiece(cur); clearLines(); spawnNext(); return false;
+}
+
+function hardDrop(){
+  if(!cur)return;
+  if(cur.type==='flash'){
+    cur.row=ROWS-1;
+    placePiece(cur); clearLines(); spawnNext(); return;
+  }
+  let n=0;
+  while(isValid(cur.shape,cur.row+1,cur.col)){cur.row++;n++;}
+  score+=n*2; updateUI();
+  placePiece(cur); clearLines(); spawnNext();
+}
+
+function moveHorz(dir){
+  if(!cur)return;
+  if(cur.type==='flash'){
+    const nc=cur.col+dir;
+    if(nc>=0&&nc<COLS)cur.col=nc;
+    return;
+  }
+  if(isValid(cur.shape,cur.row,cur.col+dir))cur.col+=dir;
+}
+
+function rotatePiece(){
+  if(!cur)return;
+  if(cur.type==='gun'){gunShoot();return;}
+  if(cur.type==='flash')return;
+  const ns=rotateShape(cur.shape);
+  if(isValid(ns,cur.row,cur.col)){cur.shape=ns;return;}
+  for(const[dr,dc]of [[0,-1],[0,1],[0,-2],[0,2],[-1,0],[-1,-1],[-1,1],[1,0],[1,-1],[1,1]]){
+    if(isValid(ns,cur.row+dr,cur.col+dc)){cur.shape=ns;cur.row+=dr;cur.col+=dc;return;}
+  }
+}
+
+// ===================== 生成下一个 =====================
+function spawnNext(){
+  cur=nxt||createPiece();
+  nxt=createPiece();
+  if(cur.type==='pentomino'||cur.type==='gun'){
+    if(!isValid(cur.shape,cur.row,cur.col)){
+      gameOver=true;
+      showOverlay('游戏结束','最终分数: '+score+' | 按任意键重新开始');
+    }
+  }
+}
+
+// ===================== 特效 =====================
+function addEffect(type,row,col,extra){
+  const dur=type==='laser'?12:type==='muzzle'?8:type==='screenflash'?15:type==='flashplace'?12:10;
+  effects.push({type,row,col,extra,timer:dur,maxTimer:dur});
+}
+function addParticles(x,y,color,count){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2, sp=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-2,color,life:25+Math.random()*15,maxLife:25+Math.random()*15,size:2+Math.random()*3});
+  }
+}
+function updateEffects(){
+  for(let i=effects.length-1;i>=0;i--){effects[i].timer--;if(effects[i].timer<=0)effects.splice(i,1);}
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+  if(shakeTimer>0){shakeX=(Math.random()-.5)*shakeTimer;shakeY=(Math.random()-.5)*shakeTimer;shakeTimer--;}
+  else{shakeX=0;shakeY=0;}
+}
+
+// ===================== 绘制 =====================
+function drawCell(c,x,y,color,ghost){
+  const s=CELL;
+  if(ghost){
+    c.save();c.globalAlpha=.18;c.fillStyle=color;c.fillRect(x+1,y+1,s-2,s-2);
+    c.globalAlpha=.35;c.strokeStyle=color;c.lineWidth=1;c.strokeRect(x+1.5,y+1.5,s-3,s-3);c.restore();return;
+  }
+  c.fillStyle=color;c.fillRect(x+1,y+1,s-2,s-2);
+  c.fillStyle='rgba(255,255,255,.22)';c.fillRect(x+1,y+1,s-2,3);c.fillRect(x+1,y+1,3,s-2);
+  c.fillStyle='rgba(0,0,0,.22)';c.fillRect(x+s-4,y+1,3,s-2);c.fillRect(x+1,y+s-4,s-2,3);
+  c.fillStyle='rgba(255,255,255,.06)';c.fillRect(x+4,y+4,s-8,s-8);
+}
+
+function drawBoard(){
+  ctx.save();
+  ctx.translate(shakeX,shakeY);
+  // 背景
+  ctx.fillStyle='#16213e';ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 网格
+  ctx.strokeStyle='rgba(255,255,255,.03)';ctx.lineWidth=.5;
+  for(let r=1;r<ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL);ctx.lineTo(canvas.width,r*CELL);ctx.stroke();}
+  for(let c=1;c<COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,canvas.height);ctx.stroke();}
+  // 棋盘格子
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(board[r][c])drawCell(ctx,c*CELL,r*CELL,board[r][c]);
+  // 当前方块
+  if(cur&&!gameOver){
+    if(cur.type==='pentomino'){
+      // 幽灵
+      let gr=cur.row;
+      while(isValid(cur.shape,gr+1,cur.col))gr++;
+      if(gr!==cur.row)for(const[dr,dc]of cur.shape)drawCell(ctx,(cur.col+dc)*CELL,(gr+dr)*CELL,cur.color,true);
+      for(const[dr,dc]of cur.shape){const r=cur.row+dr,c=cur.col+dc;if(r>=0)drawCell(ctx,c*CELL,r*CELL,cur.color);}
+    }else if(cur.type==='gun'){
+      const x=cur.col*CELL,y=cur.row*CELL;
+      ctx.save();ctx.shadowColor='#ff0000';ctx.shadowBlur=12;
+      drawCell(ctx,x,y,cur.color);ctx.shadowBlur=0;
+      ctx.font=(CELL-6)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#fff';ctx.fillText('🔫',x+CELL/2,y+CELL/2+1);ctx.restore();
+      // 瞄准线
+      ctx.save();ctx.setLineDash([3,5]);ctx.strokeStyle='rgba(255,50,50,.25)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x+CELL/2,y+CELL);ctx.lineTo(x+CELL/2,ROWS*CELL);ctx.stroke();
+      ctx.setLineDash([]);ctx.restore();
+    }else if(cur.type==='flash'){
+      const x=cur.col*CELL,y=cur.row*CELL;
+      // 目标位置
+      for(let r=ROWS-1;r>=0;r--){if(!board[r][cur.col]){drawCell(ctx,cur.col*CELL,r*CELL,cur.color,true);break;}}
+      ctx.save();ctx.shadowColor='#ffff00';ctx.shadowBlur=15+Math.sin(Date.now()/80)*5;
+      drawCell(ctx,x,y,cur.color);ctx.shadowBlur=0;
+      ctx.font=(CELL-6)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#000';ctx.fillText('⚡',x+CELL/2,y+CELL/2+1);ctx.restore();
+    }
+  }
+  // 特效
+  for(const e of effects){
+    const a=e.timer/e.maxTimer;
+    if(e.type==='laser'){
+      const x=e.col*CELL+CELL/2,y1=(e.row+1)*CELL,y2=(e.extra+1)*CELL;
+      ctx.save();ctx.globalAlpha=a;
+      ctx.strokeStyle='#ff4444';ctx.lineWidth=4;ctx.shadowColor='#ff0000';ctx.shadowBlur=12;
+      ctx.beginPath();ctx.moveTo(x,y1);ctx.lineTo(x,y2);ctx.stroke();
+      ctx.strokeStyle='#ffcccc';ctx.lineWidth=1.5;ctx.shadowBlur=0;
+      ctx.beginPath();ctx.moveTo(x,y1);ctx.lineTo(x,y2);ctx.stroke();
+      ctx.restore();
+    }
+    if(e.type==='muzzle'){
+      const x=e.col*CELL+CELL/2,y=e.row*CELL+CELL/2,rad=(1-a)*CELL*.7;
+      ctx.save();ctx.globalAlpha=a*.8;ctx.fillStyle='#ff8800';ctx.shadowColor='#ff4400';ctx.shadowBlur=15;
+      ctx.beginPath();ctx.arc(x,y,rad,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    if(e.type==='flashplace'){
+      const x=e.col*CELL,y=e.row*CELL;
+      ctx.save();ctx.globalAlpha=a*.5;ctx.fillStyle='#ffff00';ctx.shadowColor='#ffff00';ctx.shadowBlur=20*a;
+      ctx.fillRect(x-3,y-3,CELL+6,CELL+6);ctx.restore();
+    }
+    if(e.type==='screenflash'){
+      ctx.save();ctx.globalAlpha=a*.25;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.restore();
+    }
+  }
+  // 粒子
+  for(const p of particles){
+    const a=p.life/p.maxLife;
+    ctx.save();ctx.globalAlpha=a;ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=4;
+    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawNext(){
+  nctx.fillStyle='#16213e';nctx.fillRect(0,0,nCanvas.width,nCanvas.height);
+  if(!nxt)return;
+  if(nxt.type==='flash'){
+    nctx.save();nctx.shadowColor='#ffff00';nctx.shadowBlur=10;
+    drawCell(nctx,2.5*CELL,2*CELL,nxt.color);nctx.shadowBlur=0;
+    nctx.font=(CELL-6)+'px sans-serif';nctx.textAlign='center';nctx.textBaseline='middle';
+    nctx.fillStyle='#000';nctx.fillText('⚡',2.5*CELL+CELL/2,2*CELL+CELL/2+1);nctx.restore();
+  }else if(nxt.type==='gun'){
+    nctx.save();nctx.shadowColor='#ff0000';nctx.shadowBlur=10;
+    drawCell(nctx,2.5*CELL,2*CELL,nxt.color);nctx.shadowBlur=0;
+    nctx.font=(CELL-6)+'px sans-serif';nctx.textAlign='center';nctx.textBaseline='middle';
+    nctx.fillStyle='#fff';nctx.fillText('🔫',2.5*CELL+CELL/2,2*CELL+CELL/2+1);nctx.restore();
+  }else{
+    const s=nxt.shape,minR=Math.min(...s.map(([r])=>r)),maxR=Math.max(...s.map(([r])=>r)),
+    minC=Math.min(...s.map(([,c])=>c)),maxC=Math.max(...s.map(([,c])=>c)),
+    h=maxR-minR+1,w=maxC-minC+1,
+    oR=(5-h)/2-minR,oC=(6-w)/2-minC;
+    for(const[dr,dc]of s)drawCell(nctx,(dc+oC)*CELL,(dr+oR)*CELL,nxt.color);
+  }
+}
+
+// ===================== UI =====================
+function updateUI(){
+  document.getElementById('scoreVal').textContent=score;
+  document.getElementById('levelVal').textContent=level;
+  document.getElementById('linesVal').textContent=linesTotal;
+}
+function showOverlay(t,s){
+  document.getElementById('overlayTitle').textContent=t;
+  document.getElementById('overlaySub').textContent=s;
+  document.getElementById('overlay').style.display='flex';
+}
+function hideOverlay(){document.getElementById('overlay').style.display='none';}
+
+// ===================== 游戏循环 =====================
+function gameLoop(ts){
+  if(!lastTime)lastTime=ts;
+  const dt=ts-lastTime; lastTime=ts;
+  if(!gameOver&&!paused&&started){
+    dropTimer+=dt;
+    if(dropTimer>=dropInterval){moveDown();dropTimer=0;}
+  }
+  updateEffects();drawBoard();drawNext();
+  requestAnimationFrame(gameLoop);
+}
+
+// ===================== 开始 =====================
+function startGame(){
+  initState();fillBag();
+  nxt=createPiece();spawnNext();
+  updateUI();hideOverlay();started=true;
+}
+
+// ===================== 输入 =====================
+document.addEventListener('keydown',e=>{
+  if(!started){startGame();return;}
+  if(gameOver){startGame();return;}
+  if(e.key==='p'||e.key==='P'){
+    paused=!paused;
+    if(paused)showOverlay('暂停','按 P 继续游戏');
+    else{hideOverlay();lastTime=0;dropTimer=0;}
+    return;
+  }
+  if(paused)return;
+  switch(e.key){
+    case'ArrowLeft':e.preventDefault();moveHorz(-1);break;
+    case'ArrowRight':e.preventDefault();moveHorz(1);break;
+    case'ArrowDown':e.preventDefault();if(cur){if(moveDown()){score+=1;updateUI();}dropTimer=0;}break;
+    case'ArrowUp':e.preventDefault();rotatePiece();break;
+    case' ':e.preventDefault();hardDrop();break;
+  }
+});
+
+// ===================== 初始化 =====================
+initState();drawBoard();
+showOverlay('五格俄罗斯方块','按任意键开始游戏');
+requestAnimationFrame(gameLoop);
+</script>
+
+
+</body></html>
