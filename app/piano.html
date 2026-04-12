@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简谱电子钢琴</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  color:#fff;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:30px 20px;overflow-x:hidden;
+}
+h1{font-size:2.2em;margin-bottom:5px;text-shadow:0 0 20px rgba(102,126,234,.5)}
+.subtitle{color:#8888aa;margin-bottom:25px;font-size:.9em}
+
+/* ── 演奏记录 ── */
+.note-display{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:15px 25px;margin-bottom:25px;
+  min-width:520px;max-width:92vw;min-height:60px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;
+}
+.note-display .label{color:#666;font-size:.8em;margin-right:8px}
+.note-display .note-item{
+  font-size:1.3em;font-weight:bold;padding:2px 4px;
+  animation:noteAppear .3s ease;line-height:1.2;
+}
+.note-display .note-item.low{color:#6a8cff}
+.note-display .note-item.mid{color:#e0e0f0}
+.note-display .note-item.high{color:#ffba6a}
+.note-display .note-item .dot{font-size:.45em;vertical-align:middle;line-height:0}
+@keyframes noteAppear{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ── 控制栏 ── */
+.controls{display:flex;gap:20px;margin-bottom:25px;align-items:center;flex-wrap:wrap;justify-content:center}
+.controls label{font-size:.85em;color:#aaa;display:flex;align-items:center;gap:8px}
+.controls select{
+  background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);
+  border-radius:6px;padding:6px 12px;font-size:.9em;cursor:pointer;
+}
+.controls select option{background:#2a2a4a}
+.controls input[type="range"]{width:100px;accent-color:#667eea}
+.btn{
+  background:rgba(255,255,255,.1);color:#aaa;border:1px solid rgba(255,255,255,.2);
+  border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.85em;transition:all .2s;
+}
+.btn:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── 钢琴 ── */
+.piano{display:flex;flex-direction:column;gap:18px;align-items:center}
+.octave-row{display:flex;flex-direction:column;align-items:center;gap:8px}
+.octave-label{font-size:.78em;color:#666;letter-spacing:3px}
+.keys{display:flex;gap:6px}
+
+.key{
+  width:72px;height:130px;border-radius:0 0 12px 12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .08s ease;user-select:none;-webkit-user-select:none;
+  position:relative;overflow:hidden;
+}
+.key::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:rgba(255,255,255,.3);border-radius:0 0 3px 3px;
+}
+.key.active{transform:translateY(3px)}
+
+/* 低音区 - 蓝 */
+.key.low{
+  background:linear-gradient(180deg,#4a6cf7,#3a5ce5 60%,#2a4cd5);
+  border:1px solid #5a7cf7;
+  box-shadow:0 6px 20px rgba(74,108,247,.3),inset 0 -3px 6px rgba(0,0,0,.2);
+}
+.key.low:hover{background:linear-gradient(180deg,#5a7cff,#4a6cf7 60%,#3a5ce5)}
+.key.low.active{
+  background:linear-gradient(180deg,#7a9cff,#6a8cff 60%,#5a7cf7);
+  box-shadow:0 2px 10px rgba(74,108,247,.5),inset 0 -1px 3px rgba(0,0,0,.2);
+}
+
+/* 中音区 - 白 */
+.key.mid{
+  background:linear-gradient(180deg,#f0f0f8,#e0e0ee 60%,#d0d0e0);
+  border:1px solid #c0c0d0;color:#333;
+  box-shadow:0 6px 20px rgba(200,200,230,.3),inset 0 -3px 6px rgba(0,0,0,.1);
+}
+.key.mid:hover{background:linear-gradient(180deg,#fff,#f0f0f8 60%,#e0e0ee)}
+.key.mid.active{
+  background:linear-gradient(180deg,#fff,#f5f5ff 60%,#e8e8f4);
+  box-shadow:0 2px 10px rgba(200,200,230,.5),inset 0 -1px 3px rgba(0,0,0,.1);
+}
+
+/* 高音区 - 橙 */
+.key.high{
+  background:linear-gradient(180deg,#f7a44a,#e5943a 60%,#d5842a);
+  border:1px solid #f7b45a;
+  box-shadow:0 6px 20px rgba(247,164,74,.3),inset 0 -3px 6px rgba(0,0,0,.2);
+}
+.key.high:hover{background:linear-gradient(180deg,#ffb45a,#f7a44a 60%,#e5943a)}
+.key.high.active{
+  background:linear-gradient(180deg,#ffc87a,#ffba6a 60%,#f7a44a);
+  box-shadow:0 2px 10px rgba(247,164,74,.5),inset 0 -1px 3px rgba(0,0,0,.2);
+}
+
+.key .note-name{font-size:.65em;opacity:.6;margin-bottom:2px}
+.key .jianpu-wrap{display:flex;flex-direction:column;align-items:center;line-height:1}
+.key .dot{font-size:.5em;height:8px;display:flex;align-items:center}
+.key .jianpu{font-size:2.2em;font-weight:bold;line-height:1}
+.key .shortcut{
+  font-size:.7em;opacity:.5;margin-top:10px;
+  background:rgba(0,0,0,.15);padding:2px 8px;border-radius:4px;font-family:monospace;
+}
+.key.mid .shortcut{background:rgba(0,0,0,.08)}
+
+/* ── 键盘提示 ── */
+.keyboard-hint{
+  margin-top:30px;color:#555;font-size:.78em;text-align:center;line-height:2.2;
+}
+.keyboard-hint kbd{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  border-radius:4px;padding:2px 7px;font-family:monospace;font-size:.95em;color:#aaa;
+}
+
+/* ── 响应式 ── */
+@media(max-width:600px){
+  .key{width:44px;height:88px}
+  .key .jianpu{font-size:1.5em}
+  .key .note-name{font-size:.5em}
+  .key .shortcut{font-size:.55em;margin-top:6px;padding:1px 5px}
+  .key .dot{height:5px;font-size:.4em}
+  .note-display{min-width:auto;width:96vw;padding:10px 12px}
+  h1{font-size:1.5em}
+  .keys{gap:3px}
+}
+</style>
+</head>
+<body>
+
+<h1>🎹 简谱电子钢琴</h1>
+<p class="subtitle">点击琴键或使用键盘演奏</p>
+
+<!-- 演奏记录 -->
+<div class="note-display" id="noteDisplay">
+  <span class="label">演奏记录：</span>
+</div>
+
+<!-- 控制栏 -->
+<div class="controls">
+  <label>音色：
+    <select id="waveform">
+      <option value="triangle">🎹 三角波</option>
+      <option value="sine">🔔 正弦波</option>
+      <option value="square">🎸 方波</option>
+      <option value="sawtooth">🎻 锯齿波</option>
+    </select>
+  </label>
+  <label>音量：
+    <input type="range" id="volume" min="0" max="100" value="50">
+  </label>
+  <button class="btn" id="btnClear">清除记录</button>
+</div>
+
+<!-- 钢琴键盘 -->
+<div class="piano" id="piano"></div>
+
+<!-- 键盘提示 -->
+<div class="keyboard-hint">
+  键盘映射：<br>
+  高音区 <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd> ＝ 1 2 3 4 5 6 7<br>
+  中音区 <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd> ＝ 1 2 3 4 5 6 7<br>
+  低音区 <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd><kbd>B</kbd><kbd>N</kbd><kbd>M</kbd> ＝ 1 2 3 4 5 6 7
+</div>
+
+<script>
+// ──────────────────────────────────────
+// 音频上下文
+// ──────────────────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// ──────────────────────────────────────
+// 音符数据
+// ──────────────────────────────────────
+const NOTE_NAMES = ['C','D','E','F','G','A','B'];
+// 半音偏移 (相对于C)
+const SEMITONES = [0, 2, 4, 5, 7, 9, 11];
+
+const octaves = [
+  { name:'低音区', octave:3, css:'low',  keys:['z','x','c','v','b','n','m'] },
+  { name:'中音区', octave:4, css:'mid',  keys:['a','s','d','f','g','h','j'] },
+  { name:'高音区', octave:5, css:'high', keys:['q','w','e','r','t','y','u'] },
+];
+
+// 计算频率: A4=440Hz, 每半音 ×2^(1/12)
+function getFreq(noteIdx, octave) {
+  const semitoneFromA4 = SEMITONES[noteIdx] + (octave - 4) * 12 - 9;
+  return 440 * Math.pow(2, semitoneFromA4 / 12);
+}
+
+// ──────────────────────────────────────
+// 构建钢琴 UI
+// ──────────────────────────────────────
+const pianoEl = document.getElementById('piano');
+const keyElements = {}; // keyChar -> DOM element
+
+octaves.forEach(oct => {
+  const row = document.createElement('div');
+  row.className = 'octave-row';
+
+  const label = document.createElement('div');
+  label.className = 'octave-label';
+  label.textContent = oct.name;
+  row.appendChild(label);
+
+  const keysDiv = document.createElement('div');
+  keysDiv.className = 'keys';
+
+  for (let i = 0; i < 7; i++) {
+    const key = document.createElement('div');
+    key.className = 'key ' + oct.css;
+    key.dataset.noteIdx = i;
+    key.dataset.octave = oct.octave;
+    key.dataset.keyChar = oct.keys[i];
+
+    // 音名
+    const noteName = document.createElement('div');
+    noteName.className = 'note-name';
+    noteName.textContent = NOTE_NAMES[i] + oct.octave;
+
+    // 简谱 (带高低音点)
+    const wrap = document.createElement('div');
+    wrap.className = 'jianpu-wrap';
+
+    const dotAbove = document.createElement('div');
+    dotAbove.className = 'dot';
+    if (oct.css === 'high') dotAbove.textContent = '●';
+
+    const jianpu = document.createElement('div');
+    jianpu.className = 'jianpu';
+    jianpu.textContent = i + 1;
+
+    const dotBelow = document.createElement('div');
+    dotBelow.className = 'dot';
+    if (oct.css === 'low') dotBelow.textContent = '●';
+
+    wrap.appendChild(dotAbove);
+    wrap.appendChild(jianpu);
+    wrap.appendChild(dotBelow);
+
+    // 快捷键
+    const shortcut = document.createElement('div');
+    shortcut.className = 'shortcut';
+    shortcut.textContent = oct.keys[i].toUpperCase();
+
+    key.appendChild(noteName);
+    key.appendChild(wrap);
+    key.appendChild(shortcut);
+
+    // 鼠标事件
+    key.addEventListener('mousedown', e => { e.preventDefault(); triggerNote(i, oct.octave, oct.css, key); });
+    key.addEventListener('mouseup',   () => key.classList.remove('active'));
+    key.addEventListener('mouseleave',() => key.classList.remove('active'));
+
+    // 触摸事件
+    key.addEventListener('touchstart', e => { e.preventDefault(); triggerNote(i, oct.octave, oct.css, key); }, {passive:false});
+    key.addEventListener('touchend',   () => key.classList.remove('active'));
+
+    keysDiv.appendChild(key);
+    keyElements[oct.keys[i]] = key;
+  }
+
+  row.appendChild(keysDiv);
+  pianoEl.appendChild(row);
+});
+
+// ──────────────────────────────────────
+// 播放音符
+// ──────────────────────────────────────
+function playSound(noteIdx, octave) {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const freq = getFreq(noteIdx, octave);
+  const waveform = document.getElementById('waveform').value;
+  const vol = document.getElementById('volume').value / 100;
+
+  const now = audioCtx.currentTime;
+
+  // 主振荡器
+  const osc = audioCtx.createOscillator();
+  osc.type = waveform;
+  osc.frequency.setValueAtTime(freq, now);
+
+  // 增益 (ADSR 包络)
+  const gain = audioCtx.createGain();
+  const attack  = 0.01;
+  const decay   = 0.15;
+  const sustain = 0.35;
+  const release = 0.6;
+
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + attack);
+  gain.gain.linearRampToValueAtTime(vol * sustain, now + attack + decay);
+  gain.gain.linearRampToValueAtTime(0, now + attack + decay + release);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + attack + decay + release + 0.05);
+
+  // 泛音 (增加音色丰富度)
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(freq * 2, now);
+  const gain2 = audioCtx.createGain();
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(vol * 0.15, now + attack);
+  gain2.gain.linearRampToValueAtTime(0, now + attack + decay + release * 0.5);
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.start(now);
+  osc2.stop(now + attack + decay + release + 0.05);
+}
+
+// ──────────────────────────────────────
+// 演奏记录
+// ──────────────────────────────────────
+const noteDisplay = document.getElementById('noteDisplay');
+const MAX_DISPLAY = 40;
+
+function addNoteToDisplay(noteIdx, octave, cssClass) {
+  const item = document.createElement('span');
+  item.className = 'note-item ' + cssClass;
+
+  // 简谱数字 + 高低音点
+  const num = noteIdx + 1;
+  if (cssClass === 'high') {
+    item.innerHTML = '<span class="dot">●</span>' + num;
+  } else if (cssClass === 'low') {
+    item.innerHTML = num + '<span class="dot">●</span>';
+  } else {
+    item.textContent = num;
+  }
+
+  noteDisplay.appendChild(item);
+
+  // 限制显示数量
+  while (noteDisplay.querySelectorAll('.note-item').length > MAX_DISPLAY) {
+    noteDisplay.querySelector('.note-item').remove();
+  }
+}
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  noteDisplay.querySelectorAll('.note-item').forEach(el => el.remove());
+});
+
+// ──────────────────────────────────────
+// 触发音符 (播放 + 视觉 + 记录)
+// ──────────────────────────────────────
+function triggerNote(noteIdx, octave, cssClass, keyEl) {
+  playSound(noteIdx, octave);
+  keyEl.classList.add('active');
+  addNoteToDisplay(noteIdx, octave, cssClass);
+}
+
+// ──────────────────────────────────────
+// 键盘事件
+// ──────────────────────────────────────
+const keyMap = {};
+octaves.forEach(oct => {
+  oct.keys.forEach((k, i) => {
+    keyMap[k] = { noteIdx: i, octave: oct.octave, css: oct.css };
+  });
+});
+
+const pressedKeys = new Set();
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return; // 防止长按重复触发
+  const k = e.key.toLowerCase();
+  if (keyMap[k] && !pressedKeys.has(k)) {
+    pressedKeys.add(k);
+    const { noteIdx, octave, css } = keyMap[k];
+    const keyEl = keyElements[k];
+    triggerNote(noteIdx, octave, css, keyEl);
+  }
+});
+
+document.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  pressedKeys.delete(k);
+  if (keyElements[k]) keyElements[k].classList.remove('active');
+});
+</script>
+</body>
+</html>
