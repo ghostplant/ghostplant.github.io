@@ -569,7 +569,7 @@ function spawnBoss() {
   game.bossWarning = 120;
   playSound('boss');
   setTimeout(() => {
-    const hp = 80 + game.wave * 30;
+    const hp = 4000 + game.wave * 3000;
     game.boss = {
       x: W/2, y: -80, w: 120, h: 90,
       hp, maxHp: hp,
