@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPH Fluid Simulation - Water & Wax</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            overflow: hidden;
+        }
+        h1 {
+            margin: 10px 0;
+            font-size: 1.5em;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        #info {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+        canvas {
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        #stats {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        .water-color { background: radial-gradient(circle, #4fc3f7, #0288d1); }
+        .wax-color { background: radial-gradient(circle, #ffcc80, #e65100); }
+    </style>
+</head>
+<body>
+    <h1>🌊 SPH Fluid Simulation</h1>
+    <div id="info">Click and drag to stir the liquids | Scroll to adjust stir radius</div>
+    <canvas id="canvas"></canvas>
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color water-color"></div><span>Water (heavy)</span></div>
+        <div class="legend-item"><div class="legend-color wax-color"></div><span>Wax (light, viscous)</span></div>
+    </div>
+    <div id="controls">
+        <button onclick="resetSimulation()">🔄 Reset</button>
+        <button onclick="addWater()">💧 Add Water</button>
+        <button onclick="addWax()">🕯️ Add Wax</button>
+        <button onclick="togglePause()">⏯️ Pause/Play</button>
+    </div>
+    <div id="stats">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Particles: <span id="particleCount">0</span></div>
+        <div>Stir Radius: <span id="stirRadius">50</span></div>
+    </div>
+
+    <script>
+    // ============================================
+    // SPH FLUID SIMULATION
+    // Smoothed Particle Hydrodynamics
+    // ============================================
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Canvas setup
+    const W = Math.min(900, window.innerWidth - 40);
+    const H = Math.min(700, window.innerHeight - 200);
+    canvas.width = W;
+    canvas.height = H;
+
+    // ============================================
+    // SIMULATION PARAMETERS
+    // ============================================
+    const CONFIG = {
+        // Particle counts
+        INITIAL_WATER: 280,
+        INITIAL_WAX: 280,
+        MAX_PARTICLES: 800,
+
+        // SPH parameters
+        H: 16,              // Smoothing radius
+        PARTICLE_RADIUS: 4,
+        REST_DENSITY: 1000, // Reference density
+
+        // Water properties (heavy, low viscosity)
+        WATER: {
+            mass: 1.0,
+            viscosity: 0.02,
+            stiffness: 2000,
+            color: { r: 79, g: 195, b: 247 },
+            colorDark: { r: 2, g: 136, b: 209 }
+        },
+
+        // Wax properties (light, high viscosity)
+        WAX: {
+            mass: 0.6,
+            viscosity: 0.5,    // Much higher viscosity
+            stiffness: 1500,
+            color: { r: 255, g: 204, b: 128 },
+            colorDark: { r: 230, g: 81, b: 0 }
+        },
+
+        // Physics
+        GRAVITY: 400,
+        DAMPING: 0.998,
+        BOUNDARY_DAMPING: 0.3,
+        BOUNDARY_STIFFNESS: 5000,
+
+        // Mouse interaction
+        STIR_RADIUS: 50,
+        STIR_STRENGTH: 8000,
+
+        // Spatial grid
+        GRID_CELL_SIZE: 16
+    };
+
+    // ============================================
+    // PRECOMPUTED KERNEL CONSTANTS
+    // ============================================
+    const H2 = CONFIG.H * CONFIG.H;
+    const POLY6_COEF = 315.0 / (64.0 * Math.PI * Math.pow(CONFIG.H, 9));
+    const SPIKY_COEF = -45.0 / (Math.PI * Math.pow(CONFIG.H, 6));
+    const VISC_COEF = 45.0 / (Math.PI * Math.pow(CONFIG.H, 6));
+
+    // ============================================
+    // PARTICLE CLASS
+    // ============================================
+    class Particle {
+        constructor(x, y, type) {
+            this.x = x;
+            this.y = y;
+            this.vx = 0;
+            this.vy = 0;
+            this.fx = 0;
+            this.fy = 0;
+            this.density = 0;
+            this.pressure = 0;
+            this.type = type; // 'water' or 'wax'
+
+            const props = type === 'water' ? CONFIG.WATER : CONFIG.WAX;
+            this.mass = props.mass;
+            this.viscosity = props.viscosity;
+            this.stiffness = props.stiffness;
+            this.color = props.color;
+            this.colorDark = props.colorDark;
+        }
+    }
+
+    // ============================================
+    // SIMULATION STATE
+    // ============================================
+    let particles = [];
+    let paused = false;
+    let stirRadius = CONFIG.STIR_RADIUS;
+
+    // Mouse state
+    let mouse = { x: 0, y: 0, down: false, px: 0, py: 0 };
+
+    // FPS tracking
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fps = 0;
+
+    // Spatial grid for neighbor search
+    let gridWidth, gridHeight;
+    let grid = [];
+
+    // ============================================
+    // SEMI-CIRCULAR BOWL GEOMETRY
+    // ============================================
+    const BOWL = {
+        centerX: W / 2,
+        centerY: H * 0.85,
+        radius: Math.min(W, H) * 0.42,
+        wallThickness: 8
+    };
+
+    // Check if point is inside the bowl
+    function isInsideBowl(x, y) {
+        const dx = x - BOWL.centerX;
+        const dy = y - BOWL.centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Inside the semi-circle (opening facing up)
+        return dist < BOWL.radius && y < BOWL.centerY;
+    }
+
+    // Get bowl boundary distance and normal
+    function getBowlCollision(x, y) {
+        const dx = x - BOWL.centerX;
+        const dy = y - BOWL.centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Check circular boundary
+        if (dist > BOWL.radius - CONFIG.PARTICLE_RADIUS && y < BOWL.centerY) {
+            const penetration = dist - (BOWL.radius - CONFIG.PARTICLE_RADIUS);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            return { collision: true, penetration, nx, ny };
+        }
+
+        // Check bottom wall (flat bottom for stability)
+        if (y > BOWL.centerY - CONFIG.PARTICLE_RADIUS) {
+            return { collision: true, penetration: y - (BOWL.centerY - CONFIG.PARTICLE_RADIUS), nx: 0, ny: 1 };
+        }
+
+        // Check side walls (vertical sides extending up)
+        const leftWall = BOWL.centerX - BOWL.radius;
+        const rightWall = BOWL.centerX + BOWL.radius;
+        if (x < leftWall + CONFIG.PARTICLE_RADIUS) {
+            return { collision: true, penetration: (leftWall + CONFIG.PARTICLE_RADIUS) - x, nx: -1, ny: 0 };
+        }
+        if (x > rightWall - CONFIG.PARTICLE_RADIUS) {
+            return { collision: true, penetration: x - (rightWall - CONFIG.PARTICLE_RADIUS), nx: 1, ny: 0 };
+        }
+
+        return { collision: false };
+    }
+
+    // ============================================
+    // SPATIAL GRID FOR NEIGHBOR SEARCH
+    // ============================================
+    function initGrid() {
+        gridWidth = Math.ceil(W / CONFIG.GRID_CELL_SIZE);
+        gridHeight = Math.ceil(H / CONFIG.GRID_CELL_SIZE);
+        grid = new Array(gridWidth * gridHeight);
+    }
+
+    function clearGrid() {
+        for (let i = 0; i < grid.length; i++) {
+            grid[i] = [];
+        }
+    }
+
+    function getGridCell(x, y) {
+        const cx = Math.floor(x / CONFIG.GRID_CELL_SIZE);
+        const cy = Math.floor(y / CONFIG.GRID_CELL_SIZE);
+        return {
+            x: Math.max(0, Math.min(gridWidth - 1, cx)),
+            y: Math.max(0, Math.min(gridHeight - 1, cy))
+        };
+    }
+
+    function buildGrid() {
+        clearGrid();
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            const cell = getGridCell(p.x, p.y);
+            grid[cell.y * gridWidth + cell.x].push(i);
+        }
+    }
+
+    function getNeighbors(particle) {
+        const neighbors = [];
+        const cell = getGridCell(particle.x, particle.y);
+
+        // Check neighboring cells (3x3 grid)
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const cx = cell.x + dx;
+                const cy = cell.y + dy;
+                if (cx < 0 || cx >= gridWidth || cy < 0 || cy >= gridHeight) continue;
+
+                const cellParticles = grid[cy * gridWidth + cx];
+                for (let i = 0; i < cellParticles.length; i++) {
+                    const j = cellParticles[i];
+                    if (particles[j] !== particle) {
+                        neighbors.push(j);
+                    }
+                }
+            }
+        }
+        return neighbors;
+    }
+
+    // ============================================
+    // SPH KERNEL FUNCTIONS
+    // ============================================
+    function poly6Kernel(r2) {
+        if (r2 >= H2) return 0;
+        const diff = H2 - r2;
+        return POLY6_COEF * diff * diff * diff;
+    }
+
+    function spikyGradient(r, dx, dy) {
+        if (r >= CONFIG.H || r < 0.0001) return { gx: 0, gy: 0 };
+        const diff = CONFIG.H - r;
+        const factor = SPIKY_COEF * diff * diff / r;
+        return { gx: factor * dx, gy: factor * dy };
+    }
+
+    function viscosityLaplacian(r) {
+        if (r >= CONFIG.H) return 0;
+        return VISC_COEF * (CONFIG.H - r);
+    }
+
+    // ============================================
+    // PHYSICS SIMULATION
+    // ============================================
+    function computeDensityPressure() {
+        for (let i = 0; i < particles.length; i++) {
+            const pi = particles[i];
+            pi.density = 0;
+
+            const neighbors = getNeighbors(pi);
+            for (let j = 0; j < neighbors.length; j++) {
+                const pj = particles[neighbors[j]];
+                const dx = pi.x - pj.x;
+                const dy = pi.y - pj.y;
+                const r2 = dx * dx + dy * dy;
+                pi.density += pj.mass * poly6Kernel(r2);
+            }
+
+            // Self contribution
+            pi.density += pi.mass * poly6Kernel(0);
+
+            // Pressure using equation of state
+            pi.pressure = pi.stiffness * (pi.density - CONFIG.REST_DENSITY);
+        }
+    }
+
+    function computeForces() {
+        for (let i = 0; i < particles.length; i++) {
+            const pi = particles[i];
+            pi.fx = 0;
+            pi.fy = CONFIG.GRAVITY * pi.mass; // Gravity
+
+            const neighbors = getNeighbors(pi);
+            for (let j = 0; j < neighbors.length; j++) {
+                const pj = particles[neighbors[j]];
+                const dx = pi.x - pj.x;
+                const dy = pi.y - pj.y;
+                const r = Math.sqrt(dx * dx + dy * dy);
+
+                if (r < CONFIG.H && r > 0.0001) {
+                    // Pressure force
+                    const pressureTerm = (pi.pressure + pj.pressure) / (2 * pj.density + 0.0001);
+                    const grad = spikyGradient(r, dx, dy);
+                    pi.fx -= pj.mass * pressureTerm * grad.gx;
+                    pi.fy -= pj.mass * pressureTerm * grad.gy;
+
+                    // Viscosity force
+                    const viscLaplacian = viscosityLaplacian(r);
+                    const avgViscosity = (pi.viscosity + pj.viscosity) * 0.5;
+                    pi.fx += avgViscosity * pj.mass * (pj.vx - pi.vx) / (pj.density + 0.0001) * viscLaplacian;
+                    pi.fy += avgViscosity * pj.mass * (pj.vy - pi.vy) / (pj.density + 0.0001) * viscLaplacian;
+                }
+            }
+        }
+    }
+
+    function integrate(dt) {
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+
+            // Update velocity
+            p.vx += p.fx / p.mass * dt;
+            p.vy += p.fy / p.mass * dt;
+
+            // Apply damping
+            p.vx *= CONFIG.DAMPING;
+            p.vy *= CONFIG.DAMPING;
+
+            // Update position
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+
+            // Handle bowl collisions
+            const collision = getBowlCollision(p.x, p.y);
+            if (collision.collision) {
+                // Push particle out
+                p.x -= collision.nx * collision.penetration;
+                p.y -= collision.ny * collision.penetration;
+
+                // Reflect velocity
+                const vn = p.vx * collision.nx + p.vy * collision.ny;
+                if (vn > 0) {
+                    p.vx -= (1 + CONFIG.BOUNDARY_DAMPING) * vn * collision.nx;
+                    p.vy -= (1 + CONFIG.BOUNDARY_DAMPING) * vn * collision.ny;
+                }
+            }
+        }
+    }
+
+    function applyMouseForce() {
+        if (!mouse.down) return;
+
+        const dvx = (mouse.x - mouse.px) * 0.1;
+        const dvy = (mouse.y - mouse.py) * 0.1;
+
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            const dx = p.x - mouse.x;
+            const dy = p.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < stirRadius && dist > 0.001) {
+                const factor = 1 - dist / stirRadius;
+                const strength = CONFIG.STIR_STRENGTH * factor * factor;
+                p.vx += dvx * strength / p.mass * 0.016;
+                p.vy += dvy * strength / p.mass * 0.016;
+            }
+        }
+
+        mouse.px = mouse.x;
+        mouse.py = mouse.y;
+    }
+
+    // ============================================
+    // RENDERING
+    // ============================================
+    function drawBowl() {
+        ctx.save();
+
+        // Bowl gradient
+        const gradient = ctx.createRadialGradient(
+            BOWL.centerX, BOWL.centerY, BOWL.radius * 0.5,
+            BOWL.centerX, BOWL.centerY, BOWL.radius
+        );
+        gradient.addColorStop(0, 'rgba(60, 60, 80, 0.3)');
+        gradient.addColorStop(1, 'rgba(40, 40, 60, 0.8)');
+
+        // Draw semi-circular bowl
+        ctx.beginPath();
+        ctx.arc(BOWL.centerX, BOWL.centerY, BOWL.radius, Math.PI, 0, false);
+        ctx.lineTo(BOWL.centerX + BOWL.radius, BOWL.centerY + 50);
+        ctx.lineTo(BOWL.centerX - BOWL.radius, BOWL.centerY + 50);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Bowl border
+        ctx.beginPath();
+        ctx.arc(BOWL.centerX, BOWL.centerY, BOWL.radius, Math.PI, 0, false);
+        ctx.strokeStyle = 'rgba(100, 120, 150, 0.8)';
+        ctx.lineWidth = BOWL.wallThickness;
+        ctx.stroke();
+
+        // Inner glow
+        ctx.beginPath();
+        ctx.arc(BOWL.centerX, BOWL.centerY, BOWL.radius - 4, Math.PI, 0, false);
+        ctx.strokeStyle = 'rgba(150, 180, 220, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function drawParticles() {
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+
+            // Velocity-based color blending
+            const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            const blend = Math.min(1, speed / 200);
+
+            const r = p.color.r + (p.colorDark.r - p.color.r) * blend;
+            const g = p.color.g + (p.colorDark.g - p.color.g) * blend;
+            const b = p.color.b + (p.colorDark.b - p.color.b) * blend;
+
+            // Draw particle with glow
+            const gradient = ctx.createRadialGradient(
+                p.x, p.y, 0,
+                p.x, p.y, CONFIG.PARTICLE_RADIUS * 2
+            );
+            gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.9)`);
+            gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
+            gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, CONFIG.PARTICLE_RADIUS * 2, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Core
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, CONFIG.PARTICLE_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fill();
+        }
+    }
+
+    function drawMouseIndicator() {
+        if (mouse.down) {
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, stirRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(mouse.x, mouse.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fill();
+        }
+    }
+
+    function render() {
+        // Clear canvas
+        ctx.fillStyle = 'rgba(15, 20, 35, 1)';
+        ctx.fillRect(0, 0, W, H);
+
+        // Draw bowl
+        drawBowl();
+
+        // Draw particles
+        drawParticles();
+
+        // Draw mouse indicator
+        drawMouseIndicator();
+    }
+
+    // ============================================
+    // SIMULATION LOOP
+    // ============================================
+    function simulate(dt) {
+        if (paused) return;
+
+        // Clamp dt to prevent instability
+        dt = Math.min(dt, 0.016);
+
+        // Sub-stepping for stability
+        const subSteps = 2;
+        const subDt = dt / subSteps;
+
+        for (let step = 0; step < subSteps; step++) {
+            buildGrid();
+            computeDensityPressure();
+            computeForces();
+            applyMouseForce();
+            integrate(subDt);
+        }
+    }
+
+    function updateFPS() {
+        frameCount++;
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+            fps = frameCount;
+            frameCount = 0;
+            lastTime = now;
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('particleCount').textContent = particles.length;
+            document.getElementById('stirRadius').textContent = stirRadius;
+        }
+    }
+
+    let lastFrameTime = performance.now();
+
+    function gameLoop() {
+        const now = performance.now();
+        const dt = (now - lastFrameTime) / 1000;
+        lastFrameTime = now;
+
+        simulate(dt);
+        render();
+        updateFPS();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // ============================================
+    // PARTICLE CREATION
+    // ============================================
+    function createParticles(count, type, startX, startY, spreadX, spreadY) {
+        for (let i = 0; i < count && particles.length < CONFIG.MAX_PARTICLES; i++) {
+            const x = startX + (Math.random() - 0.5) * spreadX;
+            const y = startY + (Math.random() - 0.5) * spreadY;
+
+            if (isInsideBowl(x, y)) {
+                const p = new Particle(x, y, type);
+                particles.push(p);
+            }
+        }
+    }
+
+    function initSimulation() {
+        particles = [];
+        initGrid();
+
+        // Create water particles (bottom layer - heavier)
+        createParticles(
+            CONFIG.INITIAL_WATER, 'water',
+            BOWL.centerX, BOWL.centerY - BOWL.radius * 0.3,
+            BOWL.radius * 1.2, BOWL.radius * 0.4
+        );
+
+        // Create wax particles (top layer - lighter)
+        createParticles(
+            CONFIG.INITIAL_WAX, 'wax',
+            BOWL.centerX, BOWL.centerY - BOWL.radius * 0.7,
+            BOWL.radius * 1.2, BOWL.radius * 0.3
+        );
+    }
+
+    // ============================================
+    // USER INTERACTION
+    // ============================================
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+        mouse.px = mouse.x;
+        mouse.py = mouse.y;
+        mouse.down = true;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    });
+
+    canvas.addEventListener('mouseup', () => {
+        mouse.down = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        mouse.down = false;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        stirRadius = Math.max(20, Math.min(150, stirRadius - e.deltaY * 0.1));
+    });
+
+    // Touch support
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        mouse.x = touch.clientX - rect.left;
+        mouse.y = touch.clientY - rect.top;
+        mouse.px = mouse.x;
+        mouse.py = mouse.y;
+        mouse.down = true;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        mouse.x = touch.clientX - rect.left;
+        mouse.y = touch.clientY - rect.top;
+    });
+
+    canvas.addEventListener('touchend', () => {
+        mouse.down = false;
+    });
+
+    // ============================================
+    // CONTROL FUNCTIONS
+    // ============================================
+    function resetSimulation() {
+        initSimulation();
+    }
+
+    function addWater() {
+        createParticles(50, 'water',
+            BOWL.centerX, BOWL.centerY - BOWL.radius * 0.8,
+            BOWL.radius * 0.5, BOWL.radius * 0.2
+        );
+    }
+
+    function addWax() {
+        createParticles(50, 'wax',
+            BOWL.centerX, BOWL.centerY - BOWL.radius * 0.9,
+            BOWL.radius * 0.5, BOWL.radius * 0.2
+        );
+    }
+
+    function togglePause() {
+        paused = !paused;
+    }
+
+    // ============================================
+    // START SIMULATION
+    // ============================================
+    initSimulation();
+    gameLoop();
+    </script>
+</body>
+</html>
