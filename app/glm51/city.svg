@@ -1,0 +1,515 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600">
+  <defs>
+    <!-- Sky gradient -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b0e2d"/>
+      <stop offset="40%" stop-color="#1a1f5e"/>
+      <stop offset="70%" stop-color="#2e4482"/>
+      <stop offset="100%" stop-color="#e8734a"/>
+    </linearGradient>
+    <!-- Water gradient -->
+    <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2a5e"/>
+      <stop offset="100%" stop-color="#0a1030"/>
+    </linearGradient>
+    <!-- Building window glow -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Sun glow -->
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffe066" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#e8734a" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#e8734a" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Star filter -->
+    <filter id="starGlow">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="1000" height="600" fill="url(#skyGrad)"/>
+
+  <!-- Stars -->
+  <g filter="url(#starGlow)" fill="#ffffff" opacity="0.8">
+    <circle cx="80" cy="40" r="1.2"/>
+    <circle cx="150" cy="80" r="0.8"/>
+    <circle cx="230" cy="30" r="1"/>
+    <circle cx="310" cy="65" r="1.3"/>
+    <circle cx="400" cy="25" r="0.9"/>
+    <circle cx="500" cy="55" r="1.1"/>
+    <circle cx="580" cy="20" r="1.4"/>
+    <circle cx="650" cy="70" r="0.7"/>
+    <circle cx="720" cy="35" r="1.2"/>
+    <circle cx="800" cy="50" r="0.9"/>
+    <circle cx="870" cy="30" r="1.1"/>
+    <circle cx="940" cy="60" r="0.8"/>
+    <circle cx="120" cy="110" r="0.7"/>
+    <circle cx="260" cy="100" r="1"/>
+    <circle cx="440" cy="90" r="0.6"/>
+    <circle cx="620" cy="105" r="1.2"/>
+    <circle cx="770" cy="95" r="0.8"/>
+    <circle cx="900" cy="110" r="1"/>
+    <circle cx="55" cy="140" r="0.9"/>
+    <circle cx="350" cy="130" r="0.7"/>
+    <circle cx="530" cy="120" r="1.1"/>
+    <circle cx="690" cy="140" r="0.6"/>
+    <circle cx="850" cy="130" r="0.9"/>
+    <circle cx="190" cy="55" r="0.5"/>
+    <circle cx="475" cy="42" r="0.6"/>
+  </g>
+
+  <!-- Setting sun -->
+  <circle cx="500" cy="340" r="80" fill="url(#sunGlow)"/>
+  <circle cx="500" cy="340" r="30" fill="#ffe066" opacity="0.9"/>
+
+  <!-- ====== BACKGROUND BUILDINGS (darker, farther) ====== -->
+  <g fill="#0d1230" opacity="0.7">
+    <rect x="30" y="220" width="60" height="180"/>
+    <rect x="100" y="200" width="50" height="200"/>
+    <rect x="160" y="240" width="70" height="160"/>
+    <rect x="240" y="190" width="45" height="210"/>
+    <rect x="300" y="210" width="55" height="190"/>
+    <rect x="370" y="180" width="40" height="220"/>
+    <rect x="420" y="230" width="65" height="170"/>
+    <rect x="500" y="200" width="50" height="200"/>
+    <rect x="560" y="185" width="55" height="215"/>
+    <rect x="630" y="220" width="45" height="180"/>
+    <rect x="690" y="195" width="60" height="205"/>
+    <rect x="760" y="225" width="50" height="175"/>
+    <rect x="820" y="205" width="55" height="195"/>
+    <rect x="890" y="230" width="60" height="170"/>
+    <rect x="960" y="215" width="40" height="185"/>
+  </g>
+
+  <!-- ====== MAIN BUILDINGS ====== -->
+
+  <!-- Building 1 - Wide office block -->
+  <rect x="0" y="260" width="80" height="140" fill="#141a3d"/>
+  <rect x="0" y="260" width="80" height="4" fill="#1e2860"/>
+  <g filter="url(#glow)" fill="#f5c842" opacity="0.9">
+    <rect x="10" y="275" width="6" height="8" rx="1"/>
+    <rect x="25" y="275" width="6" height="8" rx="1"/>
+    <rect x="40" y="275" width="6" height="8" rx="1"/>
+    <rect x="55" y="275" width="6" height="8" rx="1"/>
+    <rect x="10" y="295" width="6" height="8" rx="1"/>
+    <rect x="40" y="295" width="6" height="8" rx="1"/>
+    <rect x="55" y="295" width="6" height="8" rx="1"/>
+    <rect x="25" y="315" width="6" height="8" rx="1"/>
+    <rect x="55" y="315" width="6" height="8" rx="1"/>
+    <rect x="10" y="335" width="6" height="8" rx="1"/>
+    <rect x="25" y="335" width="6" height="8" rx="1"/>
+    <rect x="40" y="335" width="6" height="8" rx="1"/>
+    <rect x="10" y="355" width="6" height="8" rx="1"/>
+    <rect x="40" y="355" width="6" height="8" rx="1"/>
+    <rect x="55" y="355" width="6" height="8" rx="1"/>
+    <rect x="25" y="375" width="6" height="8" rx="1"/>
+    <rect x="55" y="375" width="6" height="8" rx="1"/>
+  </g>
+
+  <!-- Building 2 - Tall skyscraper with antenna -->
+  <rect x="85" y="180" width="55" height="220" fill="#181f4a"/>
+  <rect x="108" y="165" width="10" height="15" fill="#181f4a"/>
+  <line x1="113" y1="140" x2="113" y2="165" stroke="#2a3570" stroke-width="2"/>
+  <line x1="108" y1="150" x2="118" y2="150" stroke="#ff4444" stroke-width="1.5"/>
+  <circle cx="113" cy="140" r="2" fill="#ff4444" opacity="0.9"/>
+  <g filter="url(#glow)" fill="#7ec8e3" opacity="0.85">
+    <rect x="93" y="195" width="5" height="7" rx="1"/>
+    <rect x="105" y="195" width="5" height="7" rx="1"/>
+    <rect x="117" y="195" width="5" height="7" rx="1"/>
+    <rect x="129" y="195" width="5" height="7" rx="1"/>
+    <rect x="93" y="215" width="5" height="7" rx="1"/>
+    <rect x="117" y="215" width="5" height="7" rx="1"/>
+    <rect x="93" y="235" width="5" height="7" rx="1"/>
+    <rect x="105" y="235" width="5" height="7" rx="1"/>
+    <rect x="129" y="235" width="5" height="7" rx="1"/>
+    <rect x="105" y="255" width="5" height="7" rx="1"/>
+    <rect x="117" y="255" width="5" height="7" rx="1"/>
+    <rect x="129" y="255" width="5" height="7" rx="1"/>
+    <rect x="93" y="275" width="5" height="7" rx="1"/>
+    <rect x="117" y="275" width="5" height="7" rx="1"/>
+    <rect x="93" y="295" width="5" height="7" rx="1"/>
+    <rect x="105" y="295" width="5" height="7" rx="1"/>
+    <rect x="129" y="295" width="5" height="7" rx="1"/>
+    <rect x="105" y="315" width="5" height="7" rx="1"/>
+    <rect x="117" y="315" width="5" height="7" rx="1"/>
+    <rect x="93" y="335" width="5" height="7" rx="1"/>
+    <rect x="129" y="335" width="5" height="7" rx="1"/>
+    <rect x="93" y="355" width="5" height="7" rx="1"/>
+    <rect x="105" y="355" width="5" height="7" rx="1"/>
+    <rect x="117" y="355" width="5" height="7" rx="1"/>
+    <rect x="129" y="355" width="5" height="7" rx="1"/>
+    <rect x="105" y="375" width="5" height="7" rx="1"/>
+    <rect x="129" y="375" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 3 - Medium building -->
+  <rect x="148" y="270" width="65" height="130" fill="#1a2250"/>
+  <g filter="url(#glow)" fill="#f5c842" opacity="0.85">
+    <rect x="156" y="282" width="5" height="7" rx="1"/>
+    <rect x="170" y="282" width="5" height="7" rx="1"/>
+    <rect x="184" y="282" width="5" height="7" rx="1"/>
+    <rect x="198" y="282" width="5" height="7" rx="1"/>
+    <rect x="156" y="300" width="5" height="7" rx="1"/>
+    <rect x="184" y="300" width="5" height="7" rx="1"/>
+    <rect x="156" y="318" width="5" height="7" rx="1"/>
+    <rect x="170" y="318" width="5" height="7" rx="1"/>
+    <rect x="198" y="318" width="5" height="7" rx="1"/>
+    <rect x="170" y="336" width="5" height="7" rx="1"/>
+    <rect x="184" y="336" width="5" height="7" rx="1"/>
+    <rect x="156" y="354" width="5" height="7" rx="1"/>
+    <rect x="198" y="354" width="5" height="7" rx="1"/>
+    <rect x="170" y="372" width="5" height="7" rx="1"/>
+    <rect x="184" y="372" width="5" height="7" rx="1"/>
+    <rect x="198" y="372" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 4 - Tallest skyscraper -->
+  <rect x="220" y="150" width="60" height="250" fill="#151c45"/>
+  <rect x="240" y="130" width="20" height="20" fill="#151c45"/>
+  <rect x="248" y="110" width="4" height="20" fill="#1e2860"/>
+  <circle cx="250" cy="108" r="2.5" fill="#ff3333" opacity="0.9"/>
+  <!-- Horizontal lines on building -->
+  <line x1="220" y1="200" x2="280" y2="200" stroke="#1e2860" stroke-width="1"/>
+  <line x1="220" y1="250" x2="280" y2="250" stroke="#1e2860" stroke-width="1"/>
+  <line x1="220" y1="300" x2="280" y2="300" stroke="#1e2860" stroke-width="1"/>
+  <line x1="220" y1="350" x2="280" y2="350" stroke="#1e2860" stroke-width="1"/>
+  <g filter="url(#glow)" fill="#e8d44d" opacity="0.9">
+    <rect x="228" y="162" width="5" height="7" rx="1"/>
+    <rect x="242" y="162" width="5" height="7" rx="1"/>
+    <rect x="256" y="162" width="5" height="7" rx="1"/>
+    <rect x="270" y="162" width="5" height="7" rx="1"/>
+    <rect x="228" y="182" width="5" height="7" rx="1"/>
+    <rect x="256" y="182" width="5" height="7" rx="1"/>
+    <rect x="228" y="208" width="5" height="7" rx="1"/>
+    <rect x="242" y="208" width="5" height="7" rx="1"/>
+    <rect x="270" y="208" width="5" height="7" rx="1"/>
+    <rect x="242" y="228" width="5" height="7" rx="1"/>
+    <rect x="256" y="228" width="5" height="7" rx="1"/>
+    <rect x="228" y="258" width="5" height="7" rx="1"/>
+    <rect x="256" y="258" width="5" height="7" rx="1"/>
+    <rect x="270" y="258" width="5" height="7" rx="1"/>
+    <rect x="228" y="278" width="5" height="7" rx="1"/>
+    <rect x="242" y="278" width="5" height="7" rx="1"/>
+    <rect x="270" y="278" width="5" height="7" rx="1"/>
+    <rect x="242" y="308" width="5" height="7" rx="1"/>
+    <rect x="256" y="308" width="5" height="7" rx="1"/>
+    <rect x="228" y="328" width="5" height="7" rx="1"/>
+    <rect x="270" y="328" width="5" height="7" rx="1"/>
+    <rect x="242" y="358" width="5" height="7" rx="1"/>
+    <rect x="256" y="358" width="5" height="7" rx="1"/>
+    <rect x="270" y="358" width="5" height="7" rx="1"/>
+    <rect x="228" y="378" width="5" height="7" rx="1"/>
+    <rect x="256" y="378" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 5 - Stepped building -->
+  <rect x="288" y="250" width="55" height="150" fill="#1c2555"/>
+  <rect x="295" y="230" width="40" height="20" fill="#1c2555"/>
+  <rect x="302" y="215" width="26" height="15" fill="#1c2555"/>
+  <g filter="url(#glow)" fill="#7ec8e3" opacity="0.85">
+    <rect x="296" y="260" width="5" height="7" rx="1"/>
+    <rect x="310" y="260" width="5" height="7" rx="1"/>
+    <rect x="324" y="260" width="5" height="7" rx="1"/>
+    <rect x="296" y="280" width="5" height="7" rx="1"/>
+    <rect x="324" y="280" width="5" height="7" rx="1"/>
+    <rect x="310" y="300" width="5" height="7" rx="1"/>
+    <rect x="324" y="300" width="5" height="7" rx="1"/>
+    <rect x="296" y="320" width="5" height="7" rx="1"/>
+    <rect x="310" y="320" width="5" height="7" rx="1"/>
+    <rect x="296" y="340" width="5" height="7" rx="1"/>
+    <rect x="324" y="340" width="5" height="7" rx="1"/>
+    <rect x="310" y="360" width="5" height="7" rx="1"/>
+    <rect x="324" y="360" width="5" height="7" rx="1"/>
+    <rect x="296" y="380" width="5" height="7" rx="1"/>
+    <rect x="324" y="380" width="5" height="7" rx="1"/>
+    <!-- Upper steps -->
+    <rect x="302" y="237" width="5" height="6" rx="1"/>
+    <rect x="316" y="237" width="5" height="6" rx="1"/>
+    <rect x="308" y="220" width="5" height="6" rx="1"/>
+  </g>
+
+  <!-- Building 6 - Glass tower -->
+  <rect x="350" y="190" width="50" height="210" fill="#121840"/>
+  <rect x="350" y="190" width="50" height="210" fill="none" stroke="#2a3a7a" stroke-width="0.5"/>
+  <!-- Glass panel lines -->
+  <line x1="375" y1="190" x2="375" y2="400" stroke="#2a3a7a" stroke-width="0.5"/>
+  <g filter="url(#glow)" fill="#a8d8ea" opacity="0.7">
+    <rect x="356" y="200" width="14" height="18" rx="1"/>
+    <rect x="378" y="200" width="14" height="18" rx="1"/>
+    <rect x="356" y="228" width="14" height="18" rx="1"/>
+    <rect x="378" y="228" width="14" height="18" rx="1"/>
+    <rect x="356" y="256" width="14" height="18" rx="1"/>
+    <rect x="378" y="256" width="14" height="18" rx="1"/>
+    <rect x="356" y="284" width="14" height="18" rx="1"/>
+    <rect x="356" y="312" width="14" height="18" rx="1"/>
+    <rect x="378" y="312" width="14" height="18" rx="1"/>
+    <rect x="356" y="340" width="14" height="18" rx="1"/>
+    <rect x="378" y="340" width="14" height="18" rx="1"/>
+    <rect x="378" y="368" width="14" height="18" rx="1"/>
+  </g>
+
+  <!-- Building 7 - Wide low building -->
+  <rect x="408" y="300" width="80" height="100" fill="#161e48"/>
+  <g filter="url(#glow)" fill="#f5c842" opacity="0.85">
+    <rect x="418" y="312" width="5" height="7" rx="1"/>
+    <rect x="432" y="312" width="5" height="7" rx="1"/>
+    <rect x="446" y="312" width="5" height="7" rx="1"/>
+    <rect x="460" y="312" width="5" height="7" rx="1"/>
+    <rect x="474" y="312" width="5" height="7" rx="1"/>
+    <rect x="418" y="332" width="5" height="7" rx="1"/>
+    <rect x="446" y="332" width="5" height="7" rx="1"/>
+    <rect x="474" y="332" width="5" height="7" rx="1"/>
+    <rect x="432" y="352" width="5" height="7" rx="1"/>
+    <rect x="460" y="352" width="5" height="7" rx="1"/>
+    <rect x="418" y="372" width="5" height="7" rx="1"/>
+    <rect x="446" y="372" width="5" height="7" rx="1"/>
+    <rect x="474" y="372" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 8 - Tall slim tower -->
+  <rect x="496" y="170" width="40" height="230" fill="#141b42"/>
+  <rect x="510" y="155" width="12" height="15" fill="#141b42"/>
+  <line x1="516" y1="135" x2="516" y2="155" stroke="#222e6a" stroke-width="2"/>
+  <circle cx="516" cy="133" r="2" fill="#ff3333" opacity="0.9"/>
+  <g filter="url(#glow)" fill="#e8d44d" opacity="0.85">
+    <rect x="503" y="182" width="5" height="7" rx="1"/>
+    <rect x="517" y="182" width="5" height="7" rx="1"/>
+    <rect x="503" y="202" width="5" height="7" rx="1"/>
+    <rect x="517" y="202" width="5" height="7" rx="1"/>
+    <rect x="503" y="222" width="5" height="7" rx="1"/>
+    <rect x="517" y="222" width="5" height="7" rx="1"/>
+    <rect x="503" y="242" width="5" height="7" rx="1"/>
+    <rect x="517" y="242" width="5" height="7" rx="1"/>
+    <rect x="503" y="262" width="5" height="7" rx="1"/>
+    <rect x="517" y="262" width="5" height="7" rx="1"/>
+    <rect x="503" y="282" width="5" height="7" rx="1"/>
+    <rect x="517" y="282" width="5" height="7" rx="1"/>
+    <rect x="503" y="302" width="5" height="7" rx="1"/>
+    <rect x="517" y="302" width="5" height="7" rx="1"/>
+    <rect x="503" y="322" width="5" height="7" rx="1"/>
+    <rect x="517" y="322" width="5" height="7" rx="1"/>
+    <rect x="503" y="342" width="5" height="7" rx="1"/>
+    <rect x="517" y="342" width="5" height="7" rx="1"/>
+    <rect x="503" y="362" width="5" height="7" rx="1"/>
+    <rect x="517" y="362" width="5" height="7" rx="1"/>
+    <rect x="503" y="382" width="5" height="7" rx="1"/>
+    <rect x="517" y="382" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 9 - Dome top building -->
+  <rect x="544" y="260" width="60" height="140" fill="#18204e"/>
+  <ellipse cx="574" cy="260" rx="30" ry="18" fill="#18204e"/>
+  <g filter="url(#glow)" fill="#7ec8e3" opacity="0.85">
+    <rect x="554" y="275" width="5" height="7" rx="1"/>
+    <rect x="568" y="275" width="5" height="7" rx="1"/>
+    <rect x="582" y="275" width="5" height="7" rx="1"/>
+    <rect x="554" y="295" width="5" height="7" rx="1"/>
+    <rect x="582" y="295" width="5" height="7" rx="1"/>
+    <rect x="568" y="315" width="5" height="7" rx="1"/>
+    <rect x="554" y="335" width="5" height="7" rx="1"/>
+    <rect x="582" y="335" width="5" height="7" rx="1"/>
+    <rect x="554" y="355" width="5" height="7" rx="1"/>
+    <rect x="568" y="355" width="5" height="7" rx="1"/>
+    <rect x="582" y="355" width="5" height="7" rx="1"/>
+    <rect x="568" y="375" width="5" height="7" rx="1"/>
+    <rect x="582" y="375" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 10 - Triangular top -->
+  <rect x="612" y="240" width="55" height="160" fill="#151c45"/>
+  <polygon points="612,240 639.5,205 667,240" fill="#151c45"/>
+  <g filter="url(#glow)" fill="#f5c842" opacity="0.85">
+    <rect x="622" y="255" width="5" height="7" rx="1"/>
+    <rect x="636" y="255" width="5" height="7" rx="1"/>
+    <rect x="650" y="255" width="5" height="7" rx="1"/>
+    <rect x="622" y="275" width="5" height="7" rx="1"/>
+    <rect x="650" y="275" width="5" height="7" rx="1"/>
+    <rect x="636" y="295" width="5" height="7" rx="1"/>
+    <rect x="650" y="295" width="5" height="7" rx="1"/>
+    <rect x="622" y="315" width="5" height="7" rx="1"/>
+    <rect x="650" y="315" width="5" height="7" rx="1"/>
+    <rect x="622" y="335" width="5" height="7" rx="1"/>
+    <rect x="636" y="335" width="5" height="7" rx="1"/>
+    <rect x="622" y="355" width="5" height="7" rx="1"/>
+    <rect x="650" y="355" width="5" height="7" rx="1"/>
+    <rect x="636" y="375" width="5" height="7" rx="1"/>
+    <rect x="650" y="375" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 11 - Modern glass -->
+  <rect x="676" y="220" width="55" height="180" fill="#111838"/>
+  <g filter="url(#glow)" fill="#a8d8ea" opacity="0.75">
+    <rect x="682" y="230" width="18" height="24" rx="1"/>
+    <rect x="706" y="230" width="18" height="24" rx="1"/>
+    <rect x="682" y="262" width="18" height="24" rx="1"/>
+    <rect x="706" y="262" width="18" height="24" rx="1"/>
+    <rect x="682" y="294" width="18" height="24" rx="1"/>
+    <rect x="706" y="294" width="18" height="24" rx="1"/>
+    <rect x="682" y="326" width="18" height="24" rx="1"/>
+    <rect x="706" y="326" width="18" height="24" rx="1"/>
+    <rect x="682" y="358" width="18" height="24" rx="1"/>
+    <rect x="706" y="358" width="18" height="24" rx="1"/>
+  </g>
+
+  <!-- Building 12 - Tall with spire -->
+  <rect x="740" y="195" width="45" height="205" fill="#161e4a"/>
+  <rect x="755" y="175" width="15" height="20" fill="#161e4a"/>
+  <polygon points="755,175 762.5,145 770,175" fill="#1e2860"/>
+  <circle cx="762.5" cy="143" r="2" fill="#ff3333" opacity="0.9"/>
+  <g filter="url(#glow)" fill="#e8d44d" opacity="0.85">
+    <rect x="748" y="208" width="5" height="7" rx="1"/>
+    <rect x="762" y="208" width="5" height="7" rx="1"/>
+    <rect x="776" y="208" width="5" height="7" rx="1"/>
+    <rect x="748" y="228" width="5" height="7" rx="1"/>
+    <rect x="776" y="228" width="5" height="7" rx="1"/>
+    <rect x="762" y="248" width="5" height="7" rx="1"/>
+    <rect x="748" y="268" width="5" height="7" rx="1"/>
+    <rect x="776" y="268" width="5" height="7" rx="1"/>
+    <rect x="748" y="288" width="5" height="7" rx="1"/>
+    <rect x="762" y="288" width="5" height="7" rx="1"/>
+    <rect x="776" y="288" width="5" height="7" rx="1"/>
+    <rect x="762" y="308" width="5" height="7" rx="1"/>
+    <rect x="748" y="328" width="5" height="7" rx="1"/>
+    <rect x="776" y="328" width="5" height="7" rx="1"/>
+    <rect x="762" y="348" width="5" height="7" rx="1"/>
+    <rect x="776" y="348" width="5" height="7" rx="1"/>
+    <rect x="748" y="368" width="5" height="7" rx="1"/>
+    <rect x="762" y="368" width="5" height="7" rx="1"/>
+    <rect x="776" y="368" width="5" height="7" rx="1"/>
+    <rect x="748" y="388" width="5" height="7" rx="1"/>
+    <rect x="776" y="388" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 13 - Wide short -->
+  <rect x="793" y="310" width="70" height="90" fill="#1a2250"/>
+  <g filter="url(#glow)" fill="#f5c842" opacity="0.85">
+    <rect x="803" y="322" width="5" height="7" rx="1"/>
+    <rect x="817" y="322" width="5" height="7" rx="1"/>
+    <rect x="831" y="322" width="5" height="7" rx="1"/>
+    <rect x="845" y="322" width="5" height="7" rx="1"/>
+    <rect x="803" y="342" width="5" height="7" rx="1"/>
+    <rect x="831" y="342" width="5" height="7" rx="1"/>
+    <rect x="845" y="342" width="5" height="7" rx="1"/>
+    <rect x="817" y="362" width="5" height="7" rx="1"/>
+    <rect x="845" y="362" width="5" height="7" rx="1"/>
+    <rect x="803" y="382" width="5" height="7" rx="1"/>
+    <rect x="831" y="382" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 14 - Tall right side -->
+  <rect x="870" y="210" width="50" height="190" fill="#141b42"/>
+  <rect x="885" y="195" width="20" height="15" fill="#141b42"/>
+  <g filter="url(#glow)" fill="#7ec8e3" opacity="0.85">
+    <rect x="878" y="222" width="5" height="7" rx="1"/>
+    <rect x="892" y="222" width="5" height="7" rx="1"/>
+    <rect x="906" y="222" width="5" height="7" rx="1"/>
+    <rect x="878" y="242" width="5" height="7" rx="1"/>
+    <rect x="906" y="242" width="5" height="7" rx="1"/>
+    <rect x="892" y="262" width="5" height="7" rx="1"/>
+    <rect x="906" y="262" width="5" height="7" rx="1"/>
+    <rect x="878" y="282" width="5" height="7" rx="1"/>
+    <rect x="892" y="282" width="5" height="7" rx="1"/>
+    <rect x="878" y="302" width="5" height="7" rx="1"/>
+    <rect x="906" y="302" width="5" height="7" rx="1"/>
+    <rect x="892" y="322" width="5" height="7" rx="1"/>
+    <rect x="906" y="322" width="5" height="7" rx="1"/>
+    <rect x="878" y="342" width="5" height="7" rx="1"/>
+    <rect x="892" y="342" width="5" height="7" rx="1"/>
+    <rect x="906" y="342" width="5" height="7" rx="1"/>
+    <rect x="878" y="362" width="5" height="7" rx="1"/>
+    <rect x="906" y="362" width="5" height="7" rx="1"/>
+    <rect x="892" y="382" width="5" height="7" rx="1"/>
+    <rect x="906" y="382" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- Building 15 - Far right -->
+  <rect x="928" y="270" width="72" height="130" fill="#18204e"/>
+  <g filter="url(#glow)" fill="#e8d44d" opacity="0.85">
+    <rect x="938" y="282" width="5" height="7" rx="1"/>
+    <rect x="952" y="282" width="5" height="7" rx="1"/>
+    <rect x="966" y="282" width="5" height="7" rx="1"/>
+    <rect x="980" y="282" width="5" height="7" rx="1"/>
+    <rect x="938" y="302" width="5" height="7" rx="1"/>
+    <rect x="966" y="302" width="5" height="7" rx="1"/>
+    <rect x="952" y="322" width="5" height="7" rx="1"/>
+    <rect x="980" y="322" width="5" height="7" rx="1"/>
+    <rect x="938" y="342" width="5" height="7" rx="1"/>
+    <rect x="966" y="342" width="5" height="7" rx="1"/>
+    <rect x="980" y="342" width="5" height="7" rx="1"/>
+    <rect x="938" y="362" width="5" height="7" rx="1"/>
+    <rect x="952" y="362" width="5" height="7" rx="1"/>
+    <rect x="980" y="362" width="5" height="7" rx="1"/>
+    <rect x="966" y="382" width="5" height="7" rx="1"/>
+  </g>
+
+  <!-- ====== WATER / REFLECTION ====== -->
+  <rect x="0" y="400" width="1000" height="200" fill="url(#waterGrad)"/>
+
+  <!-- Reflection shimmer lines -->
+  <g stroke="#ffffff" stroke-width="0.5" opacity="0.08">
+    <line x1="0" y1="410" x2="1000" y2="410"/>
+    <line x1="0" y1="425" x2="1000" y2="425"/>
+    <line x1="0" y1="445" x2="1000" y2="445"/>
+    <line x1="0" y1="470" x2="1000" y2="470"/>
+    <line x1="0" y1="500" x2="1000" y2="500"/>
+    <line x1="0" y1="540" x2="1000" y2="540"/>
+  </g>
+
+  <!-- Reflection glow from sun on water -->
+  <ellipse cx="500" cy="420" rx="120" ry="15" fill="#ffe066" opacity="0.12"/>
+  <ellipse cx="500" cy="440" rx="80" ry="8" fill="#ffe066" opacity="0.1"/>
+  <ellipse cx="500" cy="460" rx="50" ry="5" fill="#ffe066" opacity="0.08"/>
+
+  <!-- Building reflections in water (simplified vertical streaks) -->
+  <g opacity="0.06" fill="#7ec8e3">
+    <rect x="5" y="402" width="70" height="195"/>
+    <rect x="90" y="402" width="45" height="195"/>
+    <rect x="150" y="402" width="60" height="195"/>
+    <rect x="225" y="402" width="50" height="195"/>
+    <rect x="290" y="402" width="50" height="195"/>
+    <rect x="355" y="402" width="40" height="195"/>
+    <rect x="415" y="402" width="65" height="195"/>
+    <rect x="500" y="402" width="35" height="195"/>
+    <rect x="550" y="402" width="50" height="195"/>
+    <rect x="615" y="402" width="50" height="195"/>
+    <rect x="680" y="402" width="50" height="195"/>
+    <rect x="745" y="402" width="35" height="195"/>
+    <rect x="800" y="402" width="55" height="195"/>
+    <rect x="875" y="402" width="40" height="195"/>
+    <rect x="935" y="402" width="55" height="195"/>
+  </g>
+
+  <!-- Water surface highlight -->
+  <g opacity="0.04" fill="#ffffff">
+    <rect x="50" y="415" width="30" height="1.5" rx="1"/>
+    <rect x="200" y="430" width="40" height="1.5" rx="1"/>
+    <rect x="400" y="420" width="25" height="1.5" rx="1"/>
+    <rect x="600" y="440" width="35" height="1.5" rx="1"/>
+    <rect x="750" y="425" width="20" height="1.5" rx="1"/>
+    <rect x="900" y="435" width="30" height="1.5" rx="1"/>
+    <rect x="130" y="455" width="25" height="1.5" rx="1"/>
+    <rect x="340" y="465" width="35" height="1.5" rx="1"/>
+    <rect x="550" y="475" width="20" height="1.5" rx="1"/>
+    <rect x="820" y="460" width="30" height="1.5" rx="1"/>
+  </g>
+
+  <!-- Clouds -->
+  <g opacity="0.06" fill="#ffffff">
+    <ellipse cx="150" cy="160" rx="80" ry="15"/>
+    <ellipse cx="180" cy="155" rx="50" ry="12"/>
+    <ellipse cx="120" cy="158" rx="40" ry="10"/>
+    <ellipse cx="700" cy="140" rx="90" ry="14"/>
+    <ellipse cx="740" cy="135" rx="55" ry="11"/>
+    <ellipse cx="670" cy="138" rx="45" ry="10"/>
+  </g>
+</svg>

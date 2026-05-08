@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SPH Fluid Simulation</title>
+<style>
+*{margin:0;padding:0}
+body{background:#080818;overflow:hidden}
+canvas{display:block;cursor:crosshair}
+#hud{position:fixed;top:10px;left:12px;color:#6af;font:13px/1.6 'Courier New',monospace;pointer-events:none;user-select:none}
+#tip{position:fixed;bottom:14px;width:100%;text-align:center;color:#556;font:11px 'Courier New',monospace;pointer-events:none;user-select:none;transition:opacity 3s}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="tip">Click &amp; drag to stir &nbsp;&#x2502; &nbsp;Blue &#x2192; water (heavy, thin) &nbsp;&#x2502; &nbsp;Amber &#x2192; wax (light, viscous)</div>
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   Canvas
+   ═══════════════════════════════════════════════════════════ */
+const cvs = document.getElementById('c');
+const ctx = cvs.getContext('2d');
+const hudEl = document.getElementById('hud');
+const tipEl = document.getElementById('tip');
+
+function resize() { cvs.width = innerWidth; cvs.height = innerHeight; }
+resize();
+setTimeout(() => { tipEl.style.opacity = '0'; }, 7000);
+
+/* ═══════════════════════════════════════════════════════════
+   Simulation Parameters
+   ═══════════════════════════════════════════════════════════ */
+const H       = 25;            // smoothing radius (px)
+const H2      = H * H;
+const INV_H   = 1 / H;
+const INV_H2  = 1 / H2;
+const DT      = 0.003;           // fixed timestep (s)
+const MAXSUB  = 12;                // max substeps per frame
+
+const STIFF   = 500000;            // pressure stiffness
+const GRAV    = 300;               // gravity (px/s²)
+const MRAD   = 60;                // mouse influence radius
+const MSTR   = 15000;              // mouse force strength
+
+const WATER = 0, WAX = 1;
+const PMASS  = [1.0, 0.5];        // particle mass (wax lighter)
+const PVISC  = [10, 150];           // viscosity (wax much thicker)
+let   PREST  = [0, 0];             // rest density (auto-computed)
+
+/* ═══════════════════════════════════════════════════════════
+   Particle Data (Struct-of-Arrays for cache performance)
+   ═══════════════════════════════════════════════════════════ */
+const MAXN = 800;
+let N = 0;
+const posX = new Float32Array(MAXN);
+const posY = new Float32Array(MAXN);
+const velX = new Float32Array(MAXN);
+const velY = new Float32Array(MAXN);
+const accX = new Float32Array(MAXN);
+const accY = new Float32Array(MAXN);
+const dens = new Float32Array(MAXN);
+const prs  = new Float32Array(MAXN);  // pressure
+const tp   = new Uint8Array(MAXN);    // type: WATER or WAX
+const gcx  = new Uint16Array(MAXN);  // grid cell x
+const gcy  = new Uint16Array(MAXN);  // grid cell y
+
+/* ═══════════════════════════════════════════════════════════
+   Bowl Geometry (semi-circle, opening upward)
+   ═══════════════════════════════════════════════════════════ */
+let BCX, BCY, BR;
+
+function initBowl() {
+    BCX = cvs.width  * 0.5;
+    BCY = cvs.height * 0.48;
+    BR  = Math.min(cvs.width, cvs.height) * 0.40;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Spatial Hash Grid
+   ═══════════════════════════════════════════════════════════ */
+const CELL = H;
+let gW, gH, grid;
+
+function initGrid() {
+    gW = Math.ceil(cvs.width  / CELL) + 2;
+    gH = Math.ceil(cvs.height / CELL) + 2;
+    grid = new Array(gW * gH);
+    for (let i = 0; i < grid.length; i++) grid[i] = [];
+}
+
+function buildGrid() {
+    for (let i = 0; i < grid.length; i++) grid[i].length = 0;
+    for (let i = 0; i < N; i++) {
+        const cx = Math.max(0, Math.min(gW - 1, (posX[i] / CELL) | 0));
+        const cy = Math.max(0, Math.min(gH - 1, (posY[i] / CELL) | 0));
+        gcx[i] = cx;
+        gcy[i] = cy;
+        grid[cx + cy * gW].push(i);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Initialise Particles
+   ═══════════════════════════════════════════════════════════ */
+function initParticles() {
+    N = 0;
+    const sp = 7, jt = 1.5;
+    const br2 = (BR - 8) * (BR - 8);
+
+    // Water – bottom portion of bowl
+    const wTop = BCY + BR * 0.30;
+    for (let y = BCY + BR - sp; y > wTop && N < 450; y -= sp)
+        for (let x = BCX - BR + sp; x < BCX + BR && N < 450; x += sp) {
+            const dx = x - BCX, dy = y - BCY;
+            if (dx * dx + dy * dy < br2) {
+                posX[N] = x + (Math.random() - 0.5) * jt;
+                posY[N] = y + (Math.random() - 0.5) * jt;
+                velX[N] = velY[N] = 0;
+                tp[N] = WATER;
+                N++;
+            }
+        }
+
+    // Wax – above water
+    const xTop = BCY + BR * 0.02;
+    for (let y = wTop - sp * 0.5; y > xTop && N < MAXN; y -= sp)
+        for (let x = BCX - BR + sp; x < BCX + BR && N < MAXN; x += sp) {
+            const dx = x - BCX, dy = y - BCY;
+            if (dx * dx + dy * dy < br2) {
+                posX[N] = x + (Math.random() - 0.5) * jt;
+                posY[N] = y + (Math.random() - 0.5) * jt;
+                velX[N] = velY[N] = 0;
+                tp[N] = WAX;
+                N++;
+            }
+        }
+
+    // Auto-compute rest densities from initial layout
+    initGrid();
+    buildGrid();
+    computeDensity();
+
+    let ws = 0, wc = 0, xs = 0, xc = 0;
+    for (let i = 0; i < N; i++) {
+        if (tp[i] === WATER) { ws += dens[i]; wc++; }
+        else                 { xs += dens[i]; xc++; }
+    }
+    PREST[WATER] = wc ? ws / wc : 1;
+    PREST[WAX]   = xc ? xs / xc : 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SPH Density  (unnormalised Poly6: W = (1 - r²/h²)³)
+   ═══════════════════════════════════════════════════════════ */
+function computeDensity() {
+    for (let i = 0; i < N; i++) {
+        let d = 0;
+        const xi = posX[i], yi = posY[i];
+        const cx = gcx[i], cy = gcy[i];
+
+        for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+                const nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || nx >= gW || ny < 0 || ny >= gH) continue;
+                const cell = grid[nx + ny * gW];
+                for (let k = 0, len = cell.length; k < len; k++) {
+                    const j = cell[k];
+                    const ddx = xi - posX[j], ddy = yi - posY[j];
+                    const r2 = ddx * ddx + ddy * ddy;
+                    if (r2 < H2) {
+                        const x = 1 - r2 * INV_H2;
+                        d += PMASS[tp[j]] * x * x * x;
+                    }
+                }
+            }
+        dens[i] = d < 1e-4 ? 1e-4 : d;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SPH Forces → Accelerations
+   Pressure :  a_i = Σ_j m_j (p_i/ρ_i² + p_j/ρ_j²) ∇W_spiky
+   Viscosity:  a_i += Σ_j ½(μ_i+μ_j) m_j/ρ_j (v_j-v_i) ∇²W_visc
+   Gravity :   a_i += g
+   ═══════════════════════════════════════════════════════════ */
+function computeForces() {
+    // Pre-compute pressures for all particles
+    for (let i = 0; i < N; i++)
+        prs[i] = STIFF * (dens[i] - PREST[tp[i]]);
+
+    for (let i = 0; i < N; i++) {
+        let fx = 0, fy = GRAV;
+        const ri  = dens[i];
+        const pi  = prs[i];
+        const ti  = tp[i];
+        const xi  = posX[i], yi  = posY[i];
+        const vxi = velX[i], vyi = velY[i];
+        const cx  = gcx[i], cy  = gcy[i];
+
+        for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+                const nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || nx >= gW || ny < 0 || ny >= gH) continue;
+                const cell = grid[nx + ny * gW];
+                for (let k = 0, len = cell.length; k < len; k++) {
+                    const j = cell[k];
+                    if (j === i) continue;
+
+                    const ddx = xi - posX[j], ddy = yi - posY[j];
+                    const r2 = ddx * ddx + ddy * ddy;
+                    if (r2 >= H2 || r2 < 0.01) continue;
+
+                    const r  = Math.sqrt(r2);
+                    const mj = PMASS[tp[j]];
+                    const rj = dens[j];
+                    const pj = prs[j];
+
+                    // Pressure (spiky kernel gradient)
+                    const pT = pi / (ri * ri) + pj / (rj * rj);
+                    const sp = 3 * (1 - r * INV_H) * (1 - r * INV_H) / (H * r);
+                    fx += mj * pT * sp * ddx;
+                    fy += mj * pT * sp * ddy;
+
+                    // Viscosity (Laplacian kernel)
+                    const av  = (PVISC[ti] + PVISC[tp[j]]) * 0.5;
+                    const lap = (H - r) * INV_H2;
+                    fx += av * mj * (velX[j] - vxi) / rj * lap;
+                    fy += av * mj * (velY[j] - vyi) / rj * lap;
+                }
+            }
+
+        // Mouse stirring
+        if (mDown) {
+            const mx = xi - mX, my = yi - mY;
+            const mr2 = mx * mx + my * my;
+            if (mr2 < MRAD * MRAD && mr2 > 1) {
+                const t = 1 - Math.sqrt(mr2) / MRAD;
+                fx += MSTR * t * mVX;
+                fy += MSTR * t * mVY;
+            }
+        }
+
+        accX[i] = fx;
+        accY[i] = fy;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Boundary: semi-circular bowl + vertical side walls
+   ═══════════════════════════════════════════════════════════ */
+function enforceBoundary(i) {
+    const dx = posX[i] - BCX;
+    const dy = posY[i] - BCY;
+    const d2 = dx * dx + dy * dy;
+    const R  = BR - 4;
+    const b  = 0.3;
+
+    if (posY[i] >= BCY) {
+        // Below rim → semicircular boundary
+        if (d2 > R * R) {
+            const d = Math.sqrt(d2);
+            if (d > 0.01) {
+                const nx = dx / d, ny = dy / d;
+                posX[i] = BCX + nx * R;
+                posY[i] = BCY + ny * R;
+                const vn = velX[i] * nx + velY[i] * ny;
+                if (vn > 0) {
+                    velX[i] -= (1 + b) * vn * nx;
+                    velY[i] -= (1 + b) * vn * ny;
+                }
+            }
+        }
+    } else {
+        // Above rim → vertical side walls
+        const lw = BCX - R, rw = BCX + R;
+        if (posX[i] < lw) {
+            posX[i] = lw;
+            velX[i] = Math.abs(velX[i]) * b;
+        } else if (posX[i] > rw) {
+            posX[i] = rw;
+            velX[i] = -Math.abs(velX[i]) * b;
+        }
+    }
+
+    // Canvas top
+    if (posY[i] < 2) {
+        posY[i] = 2;
+        velY[i] = Math.abs(velY[i]) * b;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Simulation Step
+   ═══════════════════════════════════════════════════════════ */
+function step() {
+    buildGrid();
+    computeDensity();
+    computeForces();
+
+    for (let i = 0; i < N; i++) {
+        velX[i] += accX[i] * DT;
+        velY[i] += accY[i] * DT;
+
+        // Velocity cap (500 px/s)
+        const v2 = velX[i] * velX[i] + velY[i] * velY[i];
+        if (v2 > 250000) {
+            const s = 500 / Math.sqrt(v2);
+            velX[i] *= s;
+            velY[i] *= s;
+        }
+
+        posX[i] += velX[i] * DT;
+        posY[i] += velY[i] * DT;
+
+        // Tiny global damping
+        velX[i] *= 0.9995;
+        velY[i] *= 0.9995;
+
+        enforceBoundary(i);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Rendering
+   ═══════════════════════════════════════════════════════════ */
+function render() {
+    const W = cvs.width, HH = cvs.height;
+
+    // Background
+    ctx.fillStyle = '#080818';
+    ctx.fillRect(0, 0, W, HH);
+
+    // Subtle bowl glow
+    const grd = ctx.createRadialGradient(
+        BCX, BCY + BR * 0.4, BR * 0.1,
+        BCX, BCY + BR * 0.4, BR * 1.2
+    );
+    grd.addColorStop(0, 'rgba(15,25,50,0.35)');
+    grd.addColorStop(1, 'rgba(8,8,24,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, HH);
+
+    // Bowl outline
+    ctx.strokeStyle = '#1c2c4c';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(BCX, BCY, BR, 0, Math.PI, false);
+    ctx.stroke();
+
+    // Side walls
+    ctx.beginPath();
+    ctx.moveTo(BCX - BR, BCY);
+    ctx.lineTo(BCX - BR, 0);
+    ctx.moveTo(BCX + BR, BCY);
+    ctx.lineTo(BCX + BR, 0);
+    ctx.stroke();
+
+    // ── Particle glow layer ──
+    const gR = 10;
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = '#2060dd';
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+        if (tp[i] === WATER) {
+            ctx.moveTo(posX[i] + gR, posY[i]);
+            ctx.arc(posX[i], posY[i], gR, 0, 6.2832);
+        }
+    }
+    ctx.fill();
+    ctx.fillStyle = '#dd8810';
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+        if (tp[i] === WAX) {
+            ctx.moveTo(posX[i] + gR, posY[i]);
+            ctx.arc(posX[i], posY[i], gR, 0, 6.2832);
+        }
+    }
+    ctx.fill();
+
+    // ── Particle solid layer ──
+    const sR = 4;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#4499ff';
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+        if (tp[i] === WATER) {
+            ctx.moveTo(posX[i] + sR, posY[i]);
+            ctx.arc(posX[i], posY[i], sR, 0, 6.2832);
+        }
+    }
+    ctx.fill();
+    ctx.fillStyle = '#ffaa22';
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+        if (tp[i] === WAX) {
+            ctx.moveTo(posX[i] + sR, posY[i]);
+            ctx.arc(posX[i], posY[i], sR, 0, 6.2832);
+        }
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Mouse influence indicator
+    if (mDown) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(mX, mY, MRAD, 0, 6.2832);
+        ctx.stroke();
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Mouse / Touch
+   ═══════════════════════════════════════════════════════════ */
+let mX = 0, mY = 0, mVX = 0, mVY = 0, mDown = false, pmX = 0, pmY = 0;
+
+cvs.addEventListener('mousedown', e => {
+    mDown = true; pmX = mX = e.clientX; pmY = mY = e.clientY;
+});
+cvs.addEventListener('mouseup',    () => { mDown = false; mVX = mVY = 0; });
+cvs.addEventListener('mouseleave', () => { mDown = false; mVX = mVY = 0; });
+cvs.addEventListener('mousemove', e => {
+    mX = e.clientX; mY = e.clientY;
+    if (mDown) { mVX = (mX - pmX) * 8; mVY = (mY - pmY) * 8; pmX = mX; pmY = mY; }
+});
+
+cvs.addEventListener('touchstart', e => {
+    e.preventDefault(); mDown = true;
+    const t = e.touches[0]; pmX = mX = t.clientX; pmY = mY = t.clientY;
+}, { passive: false });
+cvs.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches[0]; mX = t.clientX; mY = t.clientY;
+    mVX = (mX - pmX) * 8; mVY = (mY - pmY) * 8; pmX = mX; pmY = mY;
+}, { passive: false });
+cvs.addEventListener('touchend', () => { mDown = false; mVX = mVY = 0; });
+
+/* ═══════════════════════════════════════════════════════════
+   Main Loop
+   ═══════════════════════════════════════════════════════════ */
+let lastT = 0, accum = 0;
+let fpsCnt = 0, fpsTime = 0, fpsVal = 0;
+
+initBowl();
+initGrid();
+initParticles();
+
+function loop(t) {
+    requestAnimationFrame(loop);
+    if (!lastT) { lastT = t; return; }
+
+    const frameDt = Math.min((t - lastT) * 0.001, 0.05);
+    lastT = t;
+    accum += frameDt;
+
+    let subs = 0;
+    while (accum >= DT && subs < MAXSUB) { step(); accum -= DT; subs++; }
+    if (accum > DT * MAXSUB) accum = 0;
+
+    if (!mDown) { mVX *= 0.85; mVY *= 0.85; }
+
+    render();
+
+    // FPS counter
+    fpsCnt++;
+    fpsTime += frameDt;
+    if (fpsTime >= 1) { fpsVal = fpsCnt; fpsCnt = 0; fpsTime -= 1; }
+
+    let wc = 0, xc = 0;
+    for (let i = 0; i < N; i++) tp[i] === WATER ? wc++ : xc++;
+    hudEl.textContent = 'FPS ' + fpsVal + '  |  ' + N + ' particles  (Water:' + wc + '  Wax:' + xc + ')';
+}
+
+requestAnimationFrame(loop);
+
+/* ═══════════════════════════════════════════════════════════
+   Window Resize
+   ═══════════════════════════════════════════════════════════ */
+window.addEventListener('resize', () => { resize(); initBowl(); initParticles(); });
+</script>
+</body>
+</html>

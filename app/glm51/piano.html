@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electronic Piano</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  h1 {
+    margin-bottom: 8px;
+    font-size: 2.2rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #e94560, #f5a623, #50fa7b, #6272a4, #bd93f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+
+  .subtitle {
+    margin-bottom: 24px;
+    font-size: 0.85rem;
+    color: #aaa;
+    letter-spacing: 2px;
+  }
+
+  .piano-container {
+    background: linear-gradient(180deg, #2a2a3d 0%, #1a1a2e 100%);
+    border-radius: 16px;
+    padding: 30px 36px 36px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .octave-label {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #888;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 18px;
+  }
+
+  .octave-label:first-of-type {
+    margin-top: 0;
+  }
+
+  .key-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .key {
+    width: 64px;
+    height: 140px;
+    border-radius: 0 0 8px 8px;
+    background: linear-gradient(180deg, #f0f0f0 0%, #d8d8d8 60%, #c0c0c0 100%);
+    border: 1px solid #aaa;
+    border-top: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 10px;
+    user-select: none;
+    transition: background 0.06s, transform 0.06s, box-shadow 0.06s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+    position: relative;
+  }
+
+  .key:hover {
+    background: linear-gradient(180deg, #fff 0%, #e8e8e8 60%, #d0d0d0 100%);
+  }
+
+  .key.active {
+    background: linear-gradient(180deg, #e94560 0%, #c73550 60%, #a82040 100%);
+    transform: translateY(2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(0,0,0,0.2);
+  }
+
+  .key.active .note-name,
+  .key.active .key-shortcut {
+    color: #fff;
+  }
+
+  .note-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  .key-shortcut {
+    font-size: 0.6rem;
+    color: #999;
+    letter-spacing: 1px;
+  }
+
+  /* Lower octave keys are slightly shorter and narrower */
+  .lower .key {
+    width: 56px;
+    height: 120px;
+    background: linear-gradient(180deg, #e8e0f0 0%, #cfc0dd 60%, #b8a8c8 100%);
+  }
+  .lower .key:hover {
+    background: linear-gradient(180deg, #f0e8f8 0%, #ddd0eb 60%, #c8b8d8 100%);
+  }
+  .lower .key.active {
+    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 60%, #6d28d9 100%);
+  }
+
+  /* Higher octave keys are slightly shorter and narrower */
+  .higher .key {
+    width: 56px;
+    height: 120px;
+    background: linear-gradient(180deg, #e0f0e8 0%, #c0ddcf 60%, #a8c8b8 100%);
+  }
+  .higher .key:hover {
+    background: linear-gradient(180deg, #e8f8f0 0%, #d0ebdd 60%, #b8d8c8 100%);
+  }
+  .higher .key.active {
+    background: linear-gradient(180deg, #10b981 0%, #059669 60%, #047857 100%);
+  }
+
+  .visualizer {
+    margin-top: 24px;
+    width: 100%;
+    max-width: 560px;
+    height: 60px;
+    position: relative;
+  }
+
+  .visualizer canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+  }
+
+  .instructions {
+    margin-top: 20px;
+    font-size: 0.72rem;
+    color: #666;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  .instructions kbd {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: inherit;
+    font-size: 0.72rem;
+  }
+
+  /* Floating particles */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particle-float 1s ease-out forwards;
+    z-index: 999;
+  }
+
+  @keyframes particle-float {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.2); }
+  }
+</style>
+</head>
+<body>
+
+<h1>🎹 Electronic Piano</h1>
+<p class="subtitle">3 Octaves · 21 Keys · Click or Use Keyboard</p>
+
+<div class="piano-container">
+  <!-- Lower Octave -->
+  <div class="octave-label">Lower Octave (C3 – B3)</div>
+  <div class="key-row lower" id="lower-row"></div>
+
+  <!-- Middle Octave -->
+  <div class="octave-label">Middle Octave (C4 – B4)</div>
+  <div class="key-row" id="middle-row"></div>
+
+  <!-- Higher Octave -->
+  <div class="octave-label">Higher Octave (C5 – B5)</div>
+  <div class="key-row higher" id="higher-row"></div>
+</div>
+
+<div class="visualizer">
+  <canvas id="viz"></canvas>
+</div>
+
+<div class="instructions">
+  <kbd>Z</kbd>–<kbd>M</kbd> Lower octave &nbsp;|&nbsp;
+  <kbd>Q</kbd>–<kbd>U</kbd> Middle octave &nbsp;|&nbsp;
+  <kbd>1</kbd>–<kbd>7</kbd> Higher octave<br>
+  Click or tap keys to play · Hold for sustained sound
+</div>
+
+<script>
+// ── Note Definitions ──
+const NOTE_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const SOLFEGE   = ['Do', 'Re', 'Mi', 'Fa', 'Sol', 'La', 'Si'];
+
+const OCTAVES = [
+  { label: 'lower',  base: 3, keys: ['z','x','c','v','b','n','m'] },
+  { label: 'middle', base: 4, keys: ['q','w','e','r','t','y','u'] },
+  { label: 'higher', base: 5, keys: ['1','2','3','4','5','6','7'] },
+];
+
+// Frequency calculation: A4 = 440Hz, semitone offset from A4
+function noteFreq(name, octave) {
+  const semitones = { C:-9, D:-7, E:-5, F:-4, G:-2, A:0, B:2 };
+  return 440 * Math.pow(2, semitones[name] / 12 + (octave - 4));
+}
+
+// ── Audio Context ──
+let audioCtx = null;
+let analyser = null;
+let masterGain = null;
+
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.35;
+  masterGain.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  drawVisualizer();
+}
+
+// ── Synthesis ──
+const activeOscillators = {};
+
+function playNote(id, freq) {
+  ensureAudio();
+  if (activeOscillators[id]) return; // already playing
+
+  const now = audioCtx.currentTime;
+
+  // Main oscillator (triangle for warm tone)
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = 'triangle';
+  osc1.frequency.value = freq;
+
+  // Harmonic oscillator (sine, one octave up, softer)
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq * 2;
+
+  // Sub oscillator (sine, one octave down, very soft)
+  const osc3 = audioCtx.createOscillator();
+  osc3.type = 'sine';
+  osc3.frequency.value = freq * 0.5;
+
+  // Gains
+  const g1 = audioCtx.createGain();
+  const g2 = audioCtx.createGain();
+  const g3 = audioCtx.createGain();
+  g1.gain.value = 0.6;
+  g2.gain.value = 0.15;
+  g3.gain.value = 0.08;
+
+  // Envelope (ADSR-ish)
+  const env = audioCtx.createGain();
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(1, now + 0.01);   // Attack
+  env.gain.linearRampToValueAtTime(0.7, now + 0.1);  // Decay → Sustain
+
+  // Connect
+  osc1.connect(g1); g1.connect(env);
+  osc2.connect(g2); g2.connect(env);
+  osc3.connect(g3); g3.connect(env);
+  env.connect(masterGain);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc3.start(now);
+
+  activeOscillators[id] = { osc1, osc2, osc3, env };
+}
+
+function stopNote(id) {
+  const nodes = activeOscillators[id];
+  if (!nodes) return;
+  const now = audioCtx.currentTime;
+  nodes.env.gain.cancelScheduledValues(now);
+  nodes.env.gain.setValueAtTime(nodes.env.gain.value, now);
+  nodes.env.gain.linearRampToValueAtTime(0, now + 0.15); // Release
+  const stopTime = now + 0.2;
+  nodes.osc1.stop(stopTime);
+  nodes.osc2.stop(stopTime);
+  nodes.osc3.stop(stopTime);
+  delete activeOscillators[id];
+}
+
+// ── Build Keys ──
+const keyMap = {}; // shortcut → { id, freq, element }
+
+OCTAVES.forEach(({ label, base, keys }) => {
+  const row = document.getElementById(label + '-row');
+  NOTE_NAMES.forEach((name, i) => {
+    const octave = base;
+    const freq = noteFreq(name, octave);
+    const id = `${name}${octave}`;
+    const shortcut = keys[i];
+
+    const el = document.createElement('div');
+    el.className = 'key';
+    el.dataset.id = id;
+    el.innerHTML = `<span class="note-name">${name}${octave}</span><span class="key-shortcut">${shortcut.toUpperCase()}</span>`;
+
+    // Mouse / Touch
+    const start = (e) => { e.preventDefault(); activateKey(id, freq, el); };
+    const end   = () => { deactivateKey(id, el); };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', end);
+    el.addEventListener('mouseleave', end);
+    el.addEventListener('touchstart', start, { passive: false });
+    el.addEventListener('touchend', end);
+
+    row.appendChild(el);
+    keyMap[shortcut] = { id, freq, element: el };
+  });
+});
+
+function activateKey(id, freq, el) {
+  playNote(id, freq);
+  el.classList.add('active');
+  spawnParticles(el);
+}
+
+function deactivateKey(id, el) {
+  stopNote(id);
+  el.classList.remove('active');
+}
+
+// ── Keyboard Input ──
+const pressedKeys = new Set();
+
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (keyMap[k] && !pressedKeys.has(k)) {
+    pressedKeys.add(k);
+    const { id, freq, element } = keyMap[k];
+    activateKey(id, freq, element);
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (keyMap[k]) {
+    pressedKeys.delete(k);
+    const { id, element } = keyMap[k];
+    deactivateKey(id, element);
+  }
+});
+
+// ── Particle Effect ──
+function spawnParticles(el) {
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top;
+  const colors = ['#e94560','#f5a623','#50fa7b','#bd93f9','#6272a4','#ff79c6'];
+
+  for (let i = 0; i < 5; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 4 + Math.random() * 6;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = (cx - size/2 + (Math.random()-0.5)*40) + 'px';
+    p.style.top = (cy + (Math.random()-0.5)*10) + 'px';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+}
+
+// ── Visualizer ──
+function drawVisualizer() {
+  const canvas = document.getElementById('viz');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+
+  const bufLen = analyser.frequencyBinCount;
+  const data = new Uint8Array(bufLen);
+
+  function draw() {
+    requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(data);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const barW = (canvas.width / bufLen) * 2;
+    let x = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const v = data[i] / 255;
+      const h = v * canvas.height;
+
+      const hue = (i / bufLen) * 280 + 340;
+      ctx.fillStyle = `hsla(${hue % 360}, 80%, 60%, ${0.4 + v * 0.6})`;
+      ctx.fillRect(x, canvas.height - h, barW - 1, h);
+
+      x += barW;
+    }
+  }
+  draw();
+}
+</script>
+</body>
+</html>
