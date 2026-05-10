@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ava Mitchell — Designer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Cursor follower -->
+  <div class="cursor-follower" id="cursorFollower"></div>
+
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <a href="#" class="nav__logo">AM</a>
+    <ul class="nav__links">
+      <li><a href="#work" class="nav__link">Work</a></li>
+      <li><a href="#about" class="nav__link">About</a></li>
+      <li><a href="#services" class="nav__link">Services</a></li>
+      <li><a href="#testimonials" class="nav__link">Testimonials</a></li>
+      <li><a href="#contact" class="nav__link nav__link--cta">Let's Talk</a></li>
+    </ul>
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <ul class="mobile-menu__links">
+      <li><a href="#work" class="mobile-menu__link">Work</a></li>
+      <li><a href="#about" class="mobile-menu__link">About</a></li>
+      <li><a href="#services" class="mobile-menu__link">Services</a></li>
+      <li><a href="#testimonials" class="mobile-menu__link">Testimonials</a></li>
+      <li><a href="#contact" class="mobile-menu__link">Let's Talk</a></li>
+    </ul>
+  </div>
+
+  <!-- Hero Section -->
+  <header class="hero" id="hero">
+    <div class="hero__content">
+      <p class="hero__subtitle reveal">Brand &amp; Visual Designer</p>
+      <h1 class="hero__title reveal">
+        <span class="hero__line">I craft</span>
+        <span class="hero__line hero__line--accent">meaningful</span>
+        <span class="hero__line">designs.</span>
+      </h1>
+      <p class="hero__description reveal">
+        Turning bold ideas into beautiful, purpose-driven visual experiences
+        that connect brands with their audience.
+      </p>
+      <div class="hero__cta reveal">
+        <a href="#work" class="btn btn--primary">View My Work</a>
+        <a href="#contact" class="btn btn--outline">Get In Touch</a>
+      </div>
+    </div>
+    <div class="hero__visual">
+      <div class="hero__shape hero__shape--1"></div>
+      <div class="hero__shape hero__shape--2"></div>
+      <div class="hero__shape hero__shape--3"></div>
+      <div class="hero__circle-text">
+        <svg viewBox="0 0 200 200" class="hero__rotating-text">
+          <defs>
+            <path id="circlePath" d="M 100, 100 m -75, 0 a 75, 75 0 1,1 150, 0 a 75, 75 0 1,1 -150, 0"/>
+          </defs>
+          <text>
+            <textPath href="#circlePath">DESIGN • CREATE • INSPIRE • INNOVATE • </textPath>
+          </text>
+        </svg>
+      </div>
+    </div>
+    <div class="hero__scroll">
+      <span>Scroll</span>
+      <div class="hero__scroll-line"></div>
+    </div>
+  </header>
+
+  <!-- Marquee -->
+  <section class="marquee">
+    <div class="marquee__track">
+      <span>Brand Identity</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Visual Design</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>UI/UX</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Illustration</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Typography</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Brand Strategy</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Brand Identity</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Visual Design</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>UI/UX</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Illustration</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Typography</span>
+      <span class="marquee__dot">&#9679;</span>
+      <span>Brand Strategy</span>
+      <span class="marquee__dot">&#9679;</span>
+    </div>
+  </section>
+
+  <!-- Work / Portfolio Section -->
+  <section class="work" id="work">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-header__label">Selected Work</span>
+        <h2 class="section-header__title">Featured Projects</h2>
+      </div>
+
+      <div class="work__grid">
+        <article class="work__item work__item--large reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="work__overlay">
+              <h3>Lumina Beauty</h3>
+              <p>Brand Identity &amp; Packaging</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="work__item reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="work__overlay">
+              <h3>Horizon App</h3>
+              <p>UI/UX Design</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="work__item reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="work__overlay">
+              <h3>EcoVerse</h3>
+              <p>Visual Identity &amp; Web</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="work__item work__item--large reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="work__overlay">
+              <h3>Solstice Festival</h3>
+              <p>Event Branding &amp; Collateral</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="work__item reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);">
+            <div class="work__overlay">
+              <h3>Kindred Spirits</h3>
+              <p>Illustration &amp; Packaging</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="work__item reveal">
+          <div class="work__image" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+            <div class="work__overlay">
+              <h3>Artisan Coffee</h3>
+              <p>Brand Identity</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="about__grid">
+        <div class="about__image reveal">
+          <div class="about__image-wrapper">
+            <div class="about__portrait" style="background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);"></div>
+            <div class="about__accent-box"></div>
+          </div>
+        </div>
+        <div class="about__content reveal">
+          <span class="section-header__label">About Me</span>
+          <h2 class="about__title">Designing with intention, creating with heart.</h2>
+          <p class="about__text">
+            I'm Ava Mitchell, a brand and visual designer based in Portland, Oregon.
+            With over 8 years of experience, I help businesses translate their essence
+            into compelling visual stories.
+          </p>
+          <p class="about__text">
+            My approach blends strategic thinking with artistic intuition. I believe
+            great design isn't just about aesthetics—it's about creating meaningful
+            connections between brands and the people they serve.
+          </p>
+          <div class="about__stats">
+            <div class="about__stat">
+              <span class="about__stat-number" data-target="8">0</span>
+              <span class="about__stat-label">Years Experience</span>
+            </div>
+            <div class="about__stat">
+              <span class="about__stat-number" data-target="120">0</span>
+              <span class="about__stat-label">Projects Completed</span>
+            </div>
+            <div class="about__stat">
+              <span class="about__stat-number" data-target="45">0</span>
+              <span class="about__stat-label">Happy Clients</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section -->
+  <section class="services" id="services">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-header__label">What I Do</span>
+        <h2 class="section-header__title">Services</h2>
+      </div>
+
+      <div class="services__grid">
+        <div class="service-card reveal">
+          <div class="service-card__icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+              <path d="M14 20C14 16.686 16.686 14 20 14C23.314 14 26 16.686 26 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="20" cy="20" r="3" fill="currentColor"/>
+            </svg>
+          </div>
+          <h3 class="service-card__title">Brand Identity</h3>
+          <p class="service-card__text">
+            Comprehensive brand systems including logos, color palettes, typography,
+            and brand guidelines that tell your unique story.
+          </p>
+          <span class="service-card__number">01</span>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-card__icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect x="6" y="8" width="28" height="24" rx="3" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="16" x2="34" y2="16" stroke="currentColor" stroke-width="2"/>
+              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+              <circle cx="18" cy="12" r="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <h3 class="service-card__title">UI/UX Design</h3>
+          <p class="service-card__text">
+            Intuitive, user-centered digital experiences that delight users and
+            drive business results through research-driven design.
+          </p>
+          <span class="service-card__number">02</span>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-card__icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <path d="M8 32V12L20 4L32 12V32H8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <rect x="16" y="22" width="8" height="10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3 class="service-card__title">Visual Design</h3>
+          <p class="service-card__text">
+            Eye-catching visuals for print and digital—marketing materials,
+            social media, packaging, and environmental graphics.
+          </p>
+          <span class="service-card__number">03</span>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-card__icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <path d="M8 28L14 16L20 22L26 10L32 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="14" cy="16" r="2" fill="currentColor"/>
+              <circle cx="26" cy="10" r="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <h3 class="service-card__title">Brand Strategy</h3>
+          <p class="service-card__text">
+            Strategic brand positioning, audience research, and messaging
+            frameworks that form the foundation of impactful design.
+          </p>
+          <span class="service-card__number">04</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section class="testimonials" id="testimonials">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-header__label">Kind Words</span>
+        <h2 class="section-header__title">Client Testimonials</h2>
+      </div>
+
+      <div class="testimonials__slider" id="testimonialSlider">
+        <div class="testimonials__track" id="testimonialTrack">
+          <div class="testimonial-card">
+            <blockquote class="testimonial-card__quote">
+              "Ava transformed our brand from the ground up. Her ability to understand
+              our vision and translate it into a stunning visual identity was remarkable.
+              We've seen a 40% increase in brand engagement since the rebrand."
+            </blockquote>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+              <div>
+                <p class="testimonial-card__name">Sarah Chen</p>
+                <p class="testimonial-card__role">CEO, Lumina Beauty</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="testimonial-card">
+            <blockquote class="testimonial-card__quote">
+              "Working with Ava was an absolute pleasure. She brought a level of
+              creativity and professionalism that exceeded our expectations. The
+              final product was beyond what we imagined."
+            </blockquote>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+              <div>
+                <p class="testimonial-card__name">Marcus Rivera</p>
+                <p class="testimonial-card__role">Founder, EcoVerse</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="testimonial-card">
+            <blockquote class="testimonial-card__quote">
+              "Ava doesn't just design—she tells stories. Our brand now has a
+              cohesive narrative that resonates deeply with our audience. Her
+              strategic approach made all the difference."
+            </blockquote>
+            <div class="testimonial-card__author">
+              <div class="testimonial-card__avatar" style="background: linear-gradient(135deg, #fa709a, #fee140);"></div>
+              <div>
+                <p class="testimonial-card__name">Elena Kowalski</p>
+                <p class="testimonial-card__role">Director, Solstice Festival</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonials__controls">
+          <button class="testimonials__btn" id="prevBtn" aria-label="Previous testimonial">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="testimonials__dots" id="testimonialDots">
+            <span class="testimonials__dot testimonials__dot--active"></span>
+            <span class="testimonials__dot"></span>
+            <span class="testimonials__dot"></span>
+          </div>
+          <button class="testimonials__btn" id="nextBtn" aria-label="Next testimonial">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section class="contact" id="contact">
+    <div class="container">
+      <div class="contact__grid">
+        <div class="contact__content reveal">
+          <span class="section-header__label">Get In Touch</span>
+          <h2 class="contact__title">Let's create something beautiful together.</h2>
+          <p class="contact__text">
+            Have a project in mind? I'd love to hear about it. Drop me a message
+            and let's explore how we can bring your vision to life.
+          </p>
+          <div class="contact__info">
+            <div class="contact__info-item">
+              <span class="contact__info-label">Email</span>
+              <a href="mailto:hello@avamitchell.com" class="contact__info-value">hello@avamitchell.com</a>
+            </div>
+            <div class="contact__info-item">
+              <span class="contact__info-label">Location</span>
+              <span class="contact__info-value">Portland, Oregon</span>
+            </div>
+          </div>
+          <div class="contact__social">
+            <a href="#" class="contact__social-link" aria-label="Instagram">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="5"/>
+                <circle cx="12" cy="12" r="5"/>
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+            </a>
+            <a href="#" class="contact__social-link" aria-label="Dribbble">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2c-4 4-4 16 0 20M12 2c4 4 4 16 0 20"/>
+              </svg>
+            </a>
+            <a href="#" class="contact__social-link" aria-label="LinkedIn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="3"/>
+                <path d="M7 11v6M7 7v.01M11 11v6m0-3a3 3 0 016 0v3"/>
+              </svg>
+            </a>
+            <a href="#" class="contact__social-link" aria-label="Behance">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 12h8a4 4 0 100-8H3v8zm0 0h9a4 4 0 110 8H3v-8z"/>
+                <line x1="15" y1="4" x2="21" y2="4" stroke-width="1.5"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+        <form class="contact__form reveal" id="contactForm">
+          <div class="form-group">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" id="name" name="name" class="form-input" placeholder="Your name" required>
+          </div>
+          <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" id="email" name="email" class="form-input" placeholder="your@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="project" class="form-label">Project Type</label>
+            <select id="project" name="project" class="form-input form-select" required>
+              <option value="" disabled selected>Select a project type</option>
+              <option value="brand">Brand Identity</option>
+              <option value="uiux">UI/UX Design</option>
+              <option value="visual">Visual Design</option>
+              <option value="strategy">Brand Strategy</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="message" class="form-label">Message</label>
+            <textarea id="message" name="message" class="form-input form-textarea" placeholder="Tell me about your project..." rows="5" required></textarea>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__content">
+        <div class="footer__left">
+          <a href="#" class="footer__logo">Ava Mitchell</a>
+          <p class="footer__tagline">Designing with intention, creating with heart.</p>
+        </div>
+        <div class="footer__right">
+          <p class="footer__copyright">&copy; 2024 Ava Mitchell. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
