@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Roller Coaster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        #speed {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            text-align: center;
+            z-index: 100;
+        }
+        #title {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 200;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 25px;
+            margin: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Roller Coaster...</div>
+    <div id="title">🎢 Thunder Mountain</div>
+    <div id="ui">
+        <div id="speed">Speed: 0 km/h</div>
+        <div id="height">Height: 0 m</div>
+        <div id="gforce">G-Force: 1.0 G</div>
+    </div>
+    <div id="controls">
+        <p>Press <strong>SPACE</strong> or <strong>W/↑</strong> to accelerate | <strong>S/↓</strong> to brake</p>
+        <button class="btn" onclick="resetCoaster()">Reset Ride</button>
+        <button class="btn" onclick="toggleView()">Toggle View</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        let scene, camera, renderer;
+        let track, cart, progress = 0;
+        let speed = 0.0003;
+        let targetSpeed = 0.0003;
+        let trackPoints = [];
+        let isFirstPerson = false;
+        let velocity = 0;
+        let lastHeight = 0;
+
+        // Initialize the scene
+        function init() {
+            scene = new THREE.Scene();
+
+            // Create gradient sky
+            const skyGeo = new THREE.SphereGeometry(500, 32, 32);
+            const skyMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    topColor: { value: new THREE.Color(0x0077ff) },
+                    bottomColor: { value: new THREE.Color(0xffffff) },
+                    offset: { value: 33 },
+                    exponent: { value: 0.6 }
+                },
+                vertexShader: `
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                        vWorldPosition = worldPosition.xyz;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 topColor;
+                    uniform vec3 bottomColor;
+                    uniform float offset;
+                    uniform float exponent;
+                    varying vec3 vWorldPosition;
+                    void main() {
+                        float h = normalize(vWorldPosition + offset).y;
+                        gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+                    }
+                `,
+                side: THREE.BackSide
+            });
+            const sky = new THREE.Mesh(skyGeo, skyMat);
+            scene.add(sky);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(100, 100, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 500;
+            sunLight.shadow.camera.left = -100;
+            sunLight.shadow.camera.right = 100;
+            sunLight.shadow.camera.top = 100;
+            sunLight.shadow.camera.bottom = -100;
+            scene.add(sunLight);
+
+            // Create environment
+            createGround();
+            createTrack();
+            createCart();
+            createEnvironment();
+
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+
+            // Start animation
+            animate();
+        }
+
+        function createGround() {
+            // Main ground
+            const groundGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
+            const groundMat = new THREE.MeshLambertMaterial({ color: 0x3d8c40 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Add some terrain variation
+            const vertices = groundGeo.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const z = vertices[i + 1];
+                const distFromCenter = Math.sqrt(x * x + z * z);
+                if (distFromCenter > 50) {
+                    vertices[i + 2] = Math.random() * 2 - 1;
+                }
+            }
+            groundGeo.computeVertexNormals();
+        }
+
+        function createTrack() {
+            // Create a complex roller coaster track using CatmullRom curve
+            const points = [];
+            const segments = 200;
+
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const angle = t * Math.PI * 4; // Two full loops
+
+                // Base circle with varying radius
+                const radius = 30 + Math.sin(t * Math.PI * 6) * 10;
+
+                // Height profile - create hills and valleys
+                let height = 0;
+
+                // Initial big climb
+                if (t < 0.1) {
+                    height = t * 10 * 50;
+                }
+                // First big drop
+                else if (t < 0.2) {
+                    height = 50 - (t - 0.1) * 10 * 40;
+                }
+                // Loop-de-loop 1
+                else if (t < 0.35) {
+                    const loopT = (t - 0.2) / 0.15;
+                    height = 10 + Math.sin(loopT * Math.PI * 2) * 15;
+                }
+                // Second hill
+                else if (t < 0.5) {
+                    height = 10 + Math.sin((t - 0.35) / 0.15 * Math.PI) * 25;
+                }
+                // Corkscrew section
+                else if (t < 0.7) {
+                    const corkT = (t - 0.5) / 0.2;
+                    height = 10 + Math.sin(corkT * Math.PI * 4) * 8;
+                }
+                // Final hill
+                else if (t < 0.85) {
+                    height = 10 + Math.sin((t - 0.7) / 0.15 * Math.PI) * 15;
+                }
+                // Return to station
+                else {
+                    height = 10 * (1 - (t - 0.85) / 0.15);
+                }
+
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+
+                points.push(new THREE.Vector3(x, height, z));
+            }
+
+            const curve = new THREE.CatmullRomCurve3(points, true);
+            trackPoints = curve.getPoints(500);
+
+            // Create track geometry
+            const tubeGeo = new THREE.TubeGeometry(curve, 500, 0.3, 8, true);
+            const tubeMat = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            track = new THREE.Mesh(tubeGeo, tubeMat);
+            track.castShadow = true;
+            track.receiveShadow = true;
+            scene.add(track);
+
+            // Add rails
+            createRails(curve);
+
+            // Add supports
+            createSupports(curve);
+        }
+
+        function createRails(curve) {
+            const railPoints = 500;
+
+            for (let side = -1; side <= 1; side += 2) {
+                const railGeo = new THREE.BufferGeometry();
+                const positions = [];
+
+                for (let i = 0; i <= railPoints; i++) {
+                    const t = i / railPoints;
+                    const point = curve.getPointAt(t);
+                    const tangent = curve.getTangentAt(t);
+
+                    // Create perpendicular vector
+                    const up = new THREE.Vector3(0, 1, 0);
+                    const perpendicular = new THREE.Vector3().crossVectors(tangent, up).normalize();
+
+                    const railPoint = point.clone().add(perpendicular.multiplyScalar(side * 1.5));
+                    railPoint.y += 0.5;
+
+                    positions.push(railPoint.x, railPoint.y, railPoint.z);
+                }
+
+                railGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                const railMat = new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 2 });
+                const rail = new THREE.Line(railGeo, railMat);
+                scene.add(rail);
+            }
+        }
+
+        function createSupports(curve) {
+            const supportGeo = new THREE.CylinderGeometry(0.3, 0.4, 1, 8);
+            const supportMat = new THREE.MeshStandardMaterial({
+                color: 0x8B4513,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+
+            for (let i = 0; i < 50; i++) {
+                const t = i / 50;
+                const point = curve.getPointAt(t);
+
+                if (point.y > 2) {
+                    const height = point.y;
+                    const support = new THREE.Mesh(supportGeo, supportMat);
+                    support.scale.y = height;
+                    support.position.set(point.x, height / 2, point.z);
+                    support.castShadow = true;
+                    scene.add(support);
+                }
+            }
+        }
+
+        function createCart() {
+            cart = new THREE.Group();
+
+            // Main body
+            const bodyGeo = new THREE.BoxGeometry(2, 1, 3);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.5;
+            body.castShadow = true;
+            cart.add(body);
+
+            // Front
+            const frontGeo = new THREE.BoxGeometry(1.8, 0.8, 0.5);
+            const frontMat = new THREE.MeshStandardMaterial({ color: 0xcc0000 });
+            const front = new THREE.Mesh(frontGeo, frontMat);
+            front.position.set(0, 0.6, 1.5);
+            front.castShadow = true;
+            cart.add(front);
+
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+
+            const wheelPositions = [
+                [-1, 0.3, 1], [1, 0.3, 1],
+                [-1, 0.3, -1], [1, 0.3, -1]
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(...pos);
+                wheel.castShadow = true;
+                cart.add(wheel);
+            });
+
+            // Seats
+            const seatGeo = new THREE.BoxGeometry(1.5, 0.3, 1);
+            const seatMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            for (let i = 0; i < 2; i++) {
+                const seat = new THREE.Mesh(seatGeo, seatMat);
+                seat.position.set(0, 1.1, i * 1.5 - 0.75);
+                cart.add(seat);
+            }
+
+            scene.add(cart);
+        }
+
+        function createEnvironment() {
+            // Trees
+            for (let i = 0; i < 100; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 50 + Math.random() * 150;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                createTree(x, z);
+            }
+
+            // Mountains in background
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const mountain = createMountain();
+                mountain.position.set(
+                    Math.cos(angle) * 200,
+                    0,
+                    Math.sin(angle) * 200
+                );
+                mountain.scale.set(1 + Math.random(), 1 + Math.random() * 0.5, 1 + Math.random());
+                scene.add(mountain);
+            }
+
+            // Clouds
+            for (let i = 0; i < 20; i++) {
+                const cloud = createCloud();
+                cloud.position.set(
+                    (Math.random() - 0.5) * 400,
+                    60 + Math.random() * 40,
+                    (Math.random() - 0.5) * 400
+                );
+                cloud.scale.set(2 + Math.random() * 2, 1, 2 + Math.random() * 2);
+                scene.add(cloud);
+            }
+
+            // Station platform
+            const platformGeo = new THREE.BoxGeometry(15, 0.5, 10);
+            const platformMat = new THREE.MeshStandardMaterial({ color: 0x8B7355 });
+            const platform = new THREE.Mesh(platformGeo, platformMat);
+            platform.position.set(30, 0.25, 0);
+            platform.castShadow = true;
+            platform.receiveShadow = true;
+            scene.add(platform);
+
+            // Station roof
+            const roofGeo = new THREE.BoxGeometry(16, 0.3, 12);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(30, 5, 0);
+            roof.castShadow = true;
+            scene.add(roof);
+
+            // Support poles for roof
+            const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 5, 8);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const polePositions = [[23, 2.5, -5], [23, 2.5, 5], [37, 2.5, -5], [37, 2.5, 5]];
+            polePositions.forEach(pos => {
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.position.set(...pos);
+                pole.castShadow = true;
+                scene.add(pole);
+            });
+        }
+
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+
+            // Trunk
+            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            // Foliage
+            const foliageGeo = new THREE.ConeGeometry(2, 4, 8);
+            const foliageMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+            const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+            foliage.position.y = 5;
+            foliage.castShadow = true;
+            tree.add(foliage);
+
+            tree.position.set(x, 0, z);
+            tree.scale.setScalar(0.8 + Math.random() * 0.5);
+            scene.add(tree);
+        }
+
+        function createMountain() {
+            const geo = new THREE.ConeGeometry(30, 50, 6);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x696969 });
+            const mountain = new THREE.Mesh(geo, mat);
+            mountain.position.y = 25;
+
+            // Snow cap
+            const snowGeo = new THREE.ConeGeometry(10, 15, 6);
+            const snowMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const snow = new THREE.Mesh(snowGeo, snowMat);
+            snow.position.y = 20;
+            mountain.add(snow);
+
+            return mountain;
+        }
+
+        function createCloud() {
+            const cloud = new THREE.Group();
+            const cloudMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            for (let i = 0; i < 5; i++) {
+                const puffGeo = new THREE.SphereGeometry(3 + Math.random() * 2, 8, 8);
+                const puff = new THREE.Mesh(puffGeo, cloudMat);
+                puff.position.set(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 8
+                );
+                cloud.add(puff);
+            }
+
+            return cloud;
+        }
+
+        // Input handling
+        const keys = {};
+        function onKeyDown(e) {
+            keys[e.code] = true;
+        }
+        function onKeyUp(e) {
+            keys[e.code] = false;
+        }
+
+        function updateSpeed() {
+            // Accelerate or decelerate based on input
+            if (keys['Space'] || keys['KeyW'] || keys['ArrowUp']) {
+                targetSpeed = 0.001;
+            } else if (keys['KeyS'] || keys['ArrowDown']) {
+                targetSpeed = 0.0001;
+            } else {
+                targetSpeed = 0.0003;
+            }
+
+            // Smooth speed transition
+            speed += (targetSpeed - speed) * 0.05;
+
+            // Gravity effect - slower going up, faster going down
+            const currentPoint = getPointAt(progress);
+            const nextPoint = getPointAt(progress + 0.001);
+            const heightDiff = nextPoint.y - currentPoint.y;
+
+            // Add gravity influence
+            speed += heightDiff * 0.00002;
+
+            // Clamp speed
+            speed = Math.max(0.0001, Math.min(0.002, speed));
+        }
+
+        function getPointAt(t) {
+            t = t % 1;
+            const index = Math.floor(t * trackPoints.length);
+            return trackPoints[index] || trackPoints[0];
+        }
+
+        function getTangentAt(t) {
+            const p1 = getPointAt(t - 0.001);
+            const p2 = getPointAt(t + 0.001);
+            return new THREE.Vector3().subVectors(p2, p1).normalize();
+        }
+
+        function updateCart() {
+            progress += speed;
+            if (progress >= 1) progress -= 1;
+            if (progress < 0) progress += 1;
+
+            const position = getPointAt(progress);
+            const tangent = getTangentAt(progress);
+
+            cart.position.copy(position);
+            cart.position.y += 1;
+
+            // Orient cart along track
+            const lookAt = position.clone().add(tangent);
+            cart.lookAt(lookAt);
+
+            // Add banking on curves
+            const nextTangent = getTangentAt(progress + 0.01);
+            const curvature = tangent.clone().sub(nextTangent).length();
+            const bankAngle = curvature * 5;
+            cart.rotation.z = bankAngle;
+
+            // Update camera
+            if (isFirstPerson) {
+                const headPos = position.clone();
+                headPos.y += 2.5;
+                camera.position.copy(headPos);
+
+                const lookDir = tangent.clone();
+                lookDir.y -= 0.2;
+                const lookTarget = headPos.clone().add(lookDir.multiplyScalar(10));
+                camera.lookAt(lookTarget);
+            } else {
+                const offset = tangent.clone().multiplyScalar(-15);
+                offset.y = 8;
+                camera.position.copy(position).add(offset);
+                camera.lookAt(position);
+            }
+
+            // Update UI
+            const displaySpeed = Math.round(speed * 50000);
+            document.getElementById('speed').textContent = `Speed: ${displaySpeed} km/h`;
+            document.getElementById('height').textContent = `Height: ${Math.round(position.y)} m`;
+
+            // Calculate G-force
+            const heightChange = position.y - lastHeight;
+            const gForce = 1 + heightChange * 0.1;
+            document.getElementById('gforce').textContent = `G-Force: ${Math.abs(gForce).toFixed(1)} G`;
+            lastHeight = position.y;
+        }
+
+        function resetCoaster() {
+            progress = 0;
+            speed = 0.0003;
+        }
+
+        function toggleView() {
+            isFirstPerson = !isFirstPerson;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updateSpeed();
+            updateCart();
+
+            renderer.render(scene, camera);
+        }
+
+        // Make functions globally available
+        window.resetCoaster = resetCoaster;
+        window.toggleView = toggleView;
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
