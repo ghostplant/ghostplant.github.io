@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SPH Fluid Simulation</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: monospace; color: #eee; overflow: hidden; }
+canvas { border-radius: 8px; cursor: crosshair; }
+#info { position: fixed; top: 10px; left: 10px; font-size: 12px; opacity: 0.8; }
+#controls { position: fixed; bottom: 10px; font-size: 12px; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div id="info">FPS: <span id="fps">0</span> | Particles: <span id="pcount">0</span></div>
+<canvas id="c"></canvas>
+<div id="controls">Click &amp; drag to stir | Blue = water (heavy) | Orange = wax (light, viscous)</div>
+<script>
+(function() {
+"use strict";
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 800, H = 700;
+canvas.width = W;
+canvas.height = H;
+
+// SPH Parameters
+const DT = 0.004;
+const SUBSTEPS = 3;
+const GRAVITY = 900;
+const H_SMOOTH = 20;
+const H2 = H_SMOOTH * H_SMOOTH;
+const REST_DENSITY = 1.0;
+const GAS_CONSTANT = 900;
+const CELL_SIZE = H_SMOOTH;
+
+// Bowl parameters
+const BOWL_CX = W / 2;
+const BOWL_CY = H * 0.42;
+const BOWL_R = 270;
+
+// Fluid types
+const WATER = 0;
+const WAX = 1;
+
+// Fluid properties [water, wax]
+const MASS = [1.0, 0.55];
+const VISCOSITY = [10, 90];
+const COLOR_BASE = [
+    [40, 130, 255],   // water blue
+    [255, 155, 30]    // wax orange
+];
+
+let particles = [];
+
+// Mouse state
+let mouseX = 0, mouseY = 0, mouseDown = false, pmouseX = 0, pmouseY = 0;
+let mouseVX = 0, mouseVY = 0;
+
+// Spatial hash
+let grid = {};
+
+function hashKey(cx, cy) { return cx * 7919 + cy * 104729; }
+
+function buildGrid() {
+    grid = {};
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const cx = (p.x / CELL_SIZE) | 0;
+        const cy = (p.y / CELL_SIZE) | 0;
+        const key = hashKey(cx, cy);
+        if (!grid[key]) grid[key] = [];
+        grid[key].push(i);
+    }
+}
+
+function getNeighborIndices(px, py) {
+    const cx = (px / CELL_SIZE) | 0;
+    const cy = (py / CELL_SIZE) | 0;
+    const result = [];
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const key = hashKey(cx + dx, cy + dy);
+            const cell = grid[key];
+            if (cell) {
+                for (let k = 0; k < cell.length; k++) result.push(cell[k]);
+            }
+        }
+    }
+    return result;
+}
+
+// SPH Kernels
+const POLY6_COEFF = 315.0 / (64.0 * Math.PI * Math.pow(H_SMOOTH, 9));
+const SPIKY_COEFF = -45.0 / (Math.PI * Math.pow(H_SMOOTH, 6));
+const VISC_COEFF = 45.0 / (Math.PI * Math.pow(H_SMOOTH, 6));
+
+function poly6(r2) {
+    if (r2 >= H2) return 0;
+    const d = H2 - r2;
+    return POLY6_COEFF * d * d * d;
+}
+
+function spikyGrad(r) {
+    if (r >= H_SMOOTH || r < 0.001) return 0;
+    const d = H_SMOOTH - r;
+    return SPIKY_COEFF * d * d;
+}
+
+function viscLap(r) {
+    if (r >= H_SMOOTH) return 0;
+    return VISC_COEFF * (H_SMOOTH - r);
+}
+
+// Bowl boundary
+function enforceBowl(p) {
+    const dx = p.x - BOWL_CX;
+    const dy = p.y - BOWL_CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxR = BOWL_R - 8;
+
+    if (dist > maxR) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        p.x = BOWL_CX + nx * maxR;
+        p.y = BOWL_CY + ny * maxR;
+        const vDotN = p.vx * nx + p.vy * ny;
+        if (vDotN > 0) {
+            p.vx -= 1.9 * vDotN * nx;
+            p.vy -= 1.9 * vDotN * ny;
+            p.vx *= 0.5;
+            p.vy *= 0.5;
+        }
+    }
+
+    // Ceiling: don't let particles fly above the bowl opening
+    if (p.y < BOWL_CY - 40) {
+        p.y = BOWL_CY - 40;
+        if (p.vy < 0) p.vy *= -0.3;
+    }
+
+    // For particles above bowl center, enforce lateral boundaries
+    if (p.y < BOWL_CY) {
+        const halfW = Math.sqrt(Math.max(0, BOWL_R * BOWL_R - (p.y - BOWL_CY) * (p.y - BOWL_CY))) - 8;
+        if (p.x > BOWL_CX + halfW) { p.x = BOWL_CX + halfW; p.vx *= -0.3; }
+        if (p.x < BOWL_CX - halfW) { p.x = BOWL_CX - halfW; p.vx *= -0.3; }
+    }
+}
+
+function createParticle(x, y, type) {
+    return { x, y, vx: 0, vy: 0, fx: 0, fy: 0, density: 0, pressure: 0, type };
+}
+
+function init() {
+    particles = [];
+    const spacing = 9;
+
+    // Place water particles (left-center area of bowl)
+    let count = 0;
+    for (let row = 0; count < 280; row++) {
+        for (let col = -15; col < 15 && count < 280; col++) {
+            const x = BOWL_CX - 30 + col * spacing + (Math.random() - 0.5) * 2;
+            const y = BOWL_CY + 60 + row * spacing + (Math.random() - 0.5) * 2;
+            const dx = x - BOWL_CX;
+            const dy = y - BOWL_CY;
+            if (Math.sqrt(dx * dx + dy * dy) < BOWL_R - 25) {
+                particles.push(createParticle(x, y, WATER));
+                count++;
+            }
+        }
+    }
+
+    // Place wax particles (upper area, will float)
+    count = 0;
+    for (let row = 0; count < 280; row++) {
+        for (let col = -14; col < 14 && count < 280; col++) {
+            const x = BOWL_CX + col * spacing + (Math.random() - 0.5) * 2;
+            const y = BOWL_CY + 10 + row * spacing + (Math.random() - 0.5) * 2;
+            const dx = x - BOWL_CX;
+            const dy = y - BOWL_CY;
+            if (Math.sqrt(dx * dx + dy * dy) < BOWL_R - 25) {
+                particles.push(createParticle(x, y, WAX));
+                count++;
+            }
+        }
+    }
+
+    document.getElementById('pcount').textContent = particles.length;
+}
+
+function simulate() {
+    const dt = DT;
+    const n = particles.length;
+
+    buildGrid();
+
+    // Density & pressure
+    for (let i = 0; i < n; i++) {
+        const pi = particles[i];
+        let density = 0;
+        const nbrs = getNeighborIndices(pi.x, pi.y);
+        for (let j = 0; j < nbrs.length; j++) {
+            const pj = particles[nbrs[j]];
+            const dx = pi.x - pj.x;
+            const dy = pi.y - pj.y;
+            const r2 = dx * dx + dy * dy;
+            if (r2 < H2) {
+                density += MASS[pj.type] * poly6(r2);
+            }
+        }
+        pi.density = Math.max(density, 0.001);
+        pi.pressure = GAS_CONSTANT * (pi.density - REST_DENSITY * MASS[pi.type]);
+    }
+
+    // Forces
+    for (let i = 0; i < n; i++) {
+        const pi = particles[i];
+        let fx = 0, fy = GRAVITY * MASS[pi.type];
+        const nbrs = getNeighborIndices(pi.x, pi.y);
+
+        for (let j = 0; j < nbrs.length; j++) {
+            const idx = nbrs[j];
+            if (idx === i) continue;
+            const pj = particles[idx];
+            const dx = pi.x - pj.x;
+            const dy = pi.y - pj.y;
+            const r2 = dx * dx + dy * dy;
+
+            if (r2 < H2 && r2 > 0.01) {
+                const r = Math.sqrt(r2);
+                const invR = 1.0 / r;
+
+                // Pressure
+                const pAvg = (pi.pressure + pj.pressure) * 0.5;
+                const pF = -MASS[pj.type] * pAvg / pj.density * spikyGrad(r);
+                fx += pF * dx * invR;
+                fy += pF * dy * invR;
+
+                // Viscosity
+                const visc = (VISCOSITY[pi.type] + VISCOSITY[pj.type]) * 0.5;
+                const vF = visc * MASS[pj.type] / pj.density * viscLap(r);
+                fx += vF * (pj.vx - pi.vx);
+                fy += vF * (pj.vy - pi.vy);
+            }
+        }
+
+        // Mouse stirring
+        if (mouseDown) {
+            const mdx = pi.x - mouseX;
+            const mdy = pi.y - mouseY;
+            const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+            const radius = 75;
+            if (mDist < radius && mDist > 0.5) {
+                const strength = (1.0 - mDist / radius);
+                const s2 = strength * strength;
+                fx += mouseVX * s2 * 2500;
+                fy += mouseVY * s2 * 2500;
+                // Radial push
+                fx += (mdx / mDist) * s2 * 400;
+                fy += (mdy / mDist) * s2 * 400;
+            }
+        }
+
+        pi.fx = fx;
+        pi.fy = fy;
+    }
+
+    // Integration
+    for (let i = 0; i < n; i++) {
+        const pi = particles[i];
+        const im = 1.0 / MASS[pi.type];
+
+        pi.vx += pi.fx * im * dt;
+        pi.vy += pi.fy * im * dt;
+
+        // Type-specific damping
+        const damp = pi.type === WAX ? 0.982 : 0.996;
+        pi.vx *= damp;
+        pi.vy *= damp;
+
+        // Speed cap
+        const spd = Math.sqrt(pi.vx * pi.vx + pi.vy * pi.vy);
+        if (spd > 500) {
+            const s = 500 / spd;
+            pi.vx *= s;
+            pi.vy *= s;
+        }
+
+        pi.x += pi.vx * dt;
+        pi.y += pi.vy * dt;
+
+        enforceBowl(pi);
+    }
+}
+
+function drawBowl() {
+    // Bowl body
+    ctx.beginPath();
+    ctx.arc(BOWL_CX, BOWL_CY, BOWL_R, 0, Math.PI, false);
+    ctx.strokeStyle = '#445566';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Inner highlight
+    ctx.beginPath();
+    ctx.arc(BOWL_CX, BOWL_CY, BOWL_R - 6, 0, Math.PI, false);
+    ctx.strokeStyle = 'rgba(100,160,200,0.15)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Rim extensions
+    ctx.beginPath();
+    ctx.moveTo(BOWL_CX - BOWL_R, BOWL_CY);
+    ctx.lineTo(BOWL_CX - BOWL_R, BOWL_CY - 18);
+    ctx.moveTo(BOWL_CX + BOWL_R, BOWL_CY);
+    ctx.lineTo(BOWL_CX + BOWL_R, BOWL_CY - 18);
+    ctx.strokeStyle = '#445566';
+    ctx.lineWidth = 12;
+    ctx.stroke();
+}
+
+function render() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    drawBowl();
+
+    // Draw particles
+    const n = particles.length;
+    for (let i = 0; i < n; i++) {
+        const p = particles[i];
+        const col = COLOR_BASE[p.type];
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        const bright = Math.min(1.5, 0.75 + spd * 0.002);
+
+        const r = Math.min(255, (col[0] * bright) | 0);
+        const g = Math.min(255, (col[1] * bright) | 0);
+        const b = Math.min(255, (col[2] * bright) | 0);
+
+        const size = p.type === WAX ? 5.5 : 5;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, 6.2832);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fill();
+    }
+
+    // Mouse cursor
+    if (mouseDown) {
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 75, 0, 6.2832);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+}
+
+// FPS tracking
+let frames = 0, lastTime = performance.now();
+
+function loop() {
+    for (let s = 0; s < SUBSTEPS; s++) simulate();
+    render();
+
+    frames++;
+    const now = performance.now();
+    if (now - lastTime >= 500) {
+        document.getElementById('fps').textContent = ((frames * 1000) / (now - lastTime)).toFixed(1);
+        frames = 0;
+        lastTime = now;
+    }
+    requestAnimationFrame(loop);
+}
+
+// Input handling
+canvas.addEventListener('mousedown', e => {
+    const r = canvas.getBoundingClientRect();
+    mouseX = pmouseX = e.clientX - r.left;
+    mouseY = pmouseY = e.clientY - r.top;
+    mouseDown = true;
+});
+canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    pmouseX = mouseX; pmouseY = mouseY;
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+    mouseVX = (mouseX - pmouseX) * 2.5;
+    mouseVY = (mouseY - pmouseY) * 2.5;
+});
+canvas.addEventListener('mouseup', () => { mouseDown = false; });
+canvas.addEventListener('mouseleave', () => { mouseDown = false; });
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    mouseX = pmouseX = t.clientX - r.left;
+    mouseY = pmouseY = t.clientY - r.top;
+    mouseDown = true;
+});
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    pmouseX = mouseX; pmouseY = mouseY;
+    mouseX = t.clientX - r.left;
+    mouseY = t.clientY - r.top;
+    mouseVX = (mouseX - pmouseX) * 2.5;
+    mouseVY = (mouseY - pmouseY) * 2.5;
+});
+canvas.addEventListener('touchend', () => { mouseDown = false; });
+
+init();
+loop();
+})();
+</script>
+</body>
+</html>

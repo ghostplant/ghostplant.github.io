@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Electronic Piano</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #1a1a2e; font-family: sans-serif; }
+h1 { color: #eee; margin-bottom: 20px; }
+.piano { display: flex; gap: 4px; padding: 20px; background: #16213e; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.octave { display: flex; gap: 3px; }
+.octave + .octave { margin-left: 8px; }
+.key { width: 52px; height: 180px; border-radius: 0 0 8px 8px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; font-size: 13px; font-weight: bold; user-select: none; transition: background 0.1s; }
+.key.white { background: linear-gradient(to bottom, #f8f8f8, #e8e8e8); color: #555; border: 1px solid #ccc; }
+.key.white:active, .key.white.active { background: linear-gradient(to bottom, #ddd, #bbb); }
+.key.black { width: 36px; height: 120px; background: linear-gradient(to bottom, #333, #111); color: #aaa; border: 1px solid #000; margin: 0 -10px; z-index: 1; }
+.key.black:active, .key.black.active { background: linear-gradient(to bottom, #555, #333); }
+.label { color: #999; font-size: 11px; margin-top: 10px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Electronic Piano</h1>
+<div class="piano" id="piano"></div>
+<p class="label">Keyboard: A-K (middle), Z-M (low), 1-8 (high) | Click keys to play</p>
+
+<script>
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const ctx = new AudioCtx();
+
+const notes = [
+  { name: 'C', freq: 1 },
+  { name: 'C#', freq: 2 },
+  { name: 'D', freq: 3 },
+  { name: 'D#', freq: 4 },
+  { name: 'E', freq: 5 },
+  { name: 'F', freq: 6 },
+  { name: 'F#', freq: 7 },
+  { name: 'G', freq: 8 },
+  { name: 'G#', freq: 9 },
+  { name: 'A', freq: 10 },
+  { name: 'A#', freq: 11 },
+  { name: 'B', freq: 12 },
+];
+
+// C4 = 261.63 Hz, each semitone = *2^(1/12)
+function getFreq(octave, semitone) {
+  // C4 is semitone 0 in octave 4
+  const diff = (octave - 4) * 12 + semitone;
+  return 261.63 * Math.pow(2, diff / 12);
+}
+
+function playNote(freq) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.5, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 1.5);
+}
+
+const piano = document.getElementById('piano');
+const keyElements = {};
+
+// Build 3 octaves: low (3), middle (4), high (5)
+const octaves = [3, 4, 5];
+const octaveLabels = ['Low', 'Middle', 'High'];
+
+// Keyboard mappings
+const keyMap = {};
+const lowKeys = ['z','x','c','v','b','n','m'];
+const midKeys = ['a','s','d','f','g','h','j'];
+const highKeys = ['1','2','3','4','5','6','7'];
+// Map to scale degrees: C D E F G A B (semitones 0,2,4,5,7,9,11)
+const scaleMap = [0, 2, 4, 5, 7, 9, 11];
+
+[lowKeys, midKeys, highKeys].forEach((keys, oi) => {
+  keys.forEach((k, i) => {
+    keyMap[k] = { octave: octaves[oi], semitone: scaleMap[i] };
+  });
+});
+
+octaves.forEach((oct, oi) => {
+  const div = document.createElement('div');
+  div.className = 'octave';
+  notes.forEach((note, si) => {
+    const isBlack = note.name.includes('#');
+    const key = document.createElement('div');
+    key.className = 'key ' + (isBlack ? 'black' : 'white');
+    const freq = getFreq(oct, si);
+    // Label white keys with scale degree
+    if (!isBlack) {
+      const degrees = ['1','2','3','4','5','6','7'];
+      const whiteIndex = [0,2,4,5,7,9,11].indexOf(si);
+      if (whiteIndex >= 0) {
+        const prefix = oi === 0 ? '̣' : oi === 2 ? '̇' : '';
+        key.textContent = degrees[whiteIndex] + (oi === 0 ? '↓' : oi === 2 ? '↑' : '');
+      }
+    }
+    key.addEventListener('mousedown', () => { ctx.resume(); playNote(freq); key.classList.add('active'); });
+    key.addEventListener('mouseup', () => key.classList.remove('active'));
+    key.addEventListener('mouseleave', () => key.classList.remove('active'));
+    keyElements[oct + '-' + si] = key;
+    div.appendChild(key);
+  });
+  piano.appendChild(div);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  ctx.resume();
+  const k = e.key.toLowerCase();
+  const mapping = keyMap[k];
+  if (mapping) {
+    const freq = getFreq(mapping.octave, mapping.semitone);
+    playNote(freq);
+    const el = keyElements[mapping.octave + '-' + mapping.semitone];
+    if (el) el.classList.add('active');
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  const mapping = keyMap[k];
+  if (mapping) {
+    const el = keyElements[mapping.octave + '-' + mapping.semitone];
+    if (el) el.classList.remove('active');
+  }
+});
+</script>
+</body>
+</html>
