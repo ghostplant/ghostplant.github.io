@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电子宠物 - 小鸡养成</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#222;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;font-family:'Courier New',monospace;overflow:hidden;
+  user-select:none;-webkit-user-select:none;
+}
+#device{
+  background:linear-gradient(145deg,#d4c8a0,#b8a880);
+  padding:20px 18px 14px;border-radius:20px;
+  box-shadow:0 6px 30px rgba(0,0,0,.5),inset 0 1px 2px rgba(255,255,255,.25),
+    0 0 0 3px #888,0 0 0 5px #555;
+}
+.screen{
+  background:#111;padding:8px;border-radius:6px;
+  box-shadow:inset 0 2px 10px rgba(0,0,0,.8);
+}
+canvas{
+  display:block;image-rendering:pixelated;image-rendering:crisp-edges;
+  border-radius:2px;cursor:pointer;
+  max-width:min(512px,calc(100vw - 64px));
+  max-height:min(512px,calc(100vh - 120px));
+}
+.brand{
+  text-align:center;margin-top:10px;color:#665;font-size:11px;
+  font-weight:bold;letter-spacing:6px;
+}
+.hint{
+  color:#555;font-size:11px;margin-top:12px;text-align:center;line-height:1.8;
+}
+</style>
+</head>
+<body>
+<div id="device">
+  <div class="screen"><canvas id="c"></canvas></div>
+  <div class="brand">VIRTUAL PET</div>
+</div>
+<p class="hint">点击按钮照顾小鸡 · 点击小鸡可以抚摸 · 蛋阶段点击可孵化<br>❤饱食 ⭐心情 💧清洁 📈成长 · 死亡后双击重新开始</p>
+
+<script>
+// ============ Setup ============
+const W=256,H=256,CELL=2;
+const cv=document.getElementById('c');
+cv.width=W*CELL; cv.height=H*CELL;
+const ctx=cv.getContext('2d');
+let fb=new Uint8Array(W*H);
+let rf=0; // render frame counter
+
+// ============ Drawing Primitives ============
+function px(x,y,v){
+  x=Math.round(x);y=Math.round(y);
+  if(x>=0&&x<W&&y>=0&&y<H) fb[y*W+x]=v;
+}
+function circ(cx,cy,r,v){
+  if(r<0)return;
+  let r2=r*r+r*0.5;
+  for(let dy=-r;dy<=r;dy++)
+    for(let dx=-r;dx<=r;dx++)
+      if(dx*dx+dy*dy<=r2) px(cx+dx,cy+dy,v);
+}
+function ellip(cx,cy,rx,ry,v){
+  for(let dy=-ry;dy<=ry;dy++)
+    for(let dx=-rx;dx<=rx;dx++)
+      if(rx*ry && (dx*dx)/(rx*rx)+(dy*dy)/(ry*ry)<=1)
+        px(cx+dx,cy+dy,v);
+}
+function rect(x,y,w,h,v){
+  for(let dy=0;dy<h;dy++) for(let dx=0;dx<w;dx++) px(x+dx,y+dy,v);
+}
+function outline(x,y,w,h){
+  for(let i=0;i<w;i++){px(x+i,y,1);px(x+i,y+h-1,1);}
+  for(let i=0;i<h;i++){px(x,y+i,1);px(x+w-1,y+i,1);}
+}
+function bar(x,y,w,h,ratio){
+  ratio=Math.max(0,Math.min(1,ratio));
+  outline(x,y,w,h);
+  let fw=Math.round((w-2)*ratio);
+  if(fw>0) rect(x+1,y+1,fw,h-2,1);
+}
+function ln(x0,y0,x1,y1,v){
+  v=v!==undefined?v:1;
+  x0=Math.round(x0);y0=Math.round(y0);
+  x1=Math.round(x1);y1=Math.round(y1);
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+  let sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy;
+  while(true){
+    px(x0,y0,v);
+    if(x0===x1&&y0===y1)break;
+    let e2=2*err;
+    if(e2>-dy){err-=dy;x0+=sx;}
+    if(e2<dx){err+=dx;y0+=sy;}
+  }
+}
+
+// ============ Scaled Icon Drawing ============
+function drawIcon(data,ox,oy,sc){
+  for(let y=0;y<data.length;y++)
+    for(let x=0;x<data[y].length;x++)
+      if(data[y][x])
+        rect(ox+x*sc,oy+y*sc,sc,sc,1);
+}
+const ICON_HEART=[[0,1,0,1,0],[1,1,1,1,1],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]];
+const ICON_STAR=[[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,1,1,1,0],[0,0,1,0,0]];
+const ICON_DROP=[[0,0,1,0,0],[0,1,1,1,0],[0,1,1,1,0],[0,0,1,0,0]];
+const ICON_ARROW=[[0,0,1,0,0],[0,1,1,1,0],[1,0,1,0,1],[0,0,1,0,0],[0,0,1,0,0]];
+
+// ============ 3x5 Pixel Font (scalable) ============
+const F={
+'0':['XXX','X.X','X.X','X.X','XXX'],
+'1':['.X.','XX ','.X ','.X ','XXX'],
+'2':['XXX','..X','XXX','X..','XXX'],
+'3':['XXX','..X','XXX','..X','XXX'],
+'4':['X.X','X.X','XXX','..X','..X'],
+'5':['XXX','X..','XXX','..X','XXX'],
+'6':['XXX','X..','XXX','X.X','XXX'],
+'7':['XXX','..X','..X','..X','..X'],
+'8':['XXX','X.X','XXX','X.X','XXX'],
+'9':['XXX','X.X','XXX','..X','XXX'],
+'A':['.X.','X.X','XXX','X.X','X.X'],
+'B':['XX.','X.X','XX.','X.X','XX.'],
+'C':['XXX','X..','X..','X..','XXX'],
+'D':['XX.','X.X','X.X','X.X','XX.'],
+'E':['XXX','X..','XXX','X..','XXX'],
+'F':['XXX','X..','XX.','X..','X..'],
+'G':['XXX','X..','X.X','X.X','XXX'],
+'H':['X.X','X.X','XXX','X.X','X.X'],
+'I':['XXX','..X','..X','..X','XXX'],
+'J':['XXX','..X','..X','X.X','XXX'],
+'K':['X.X','X.X','XX.','X.X','X.X'],
+'L':['X..','X..','X..','X..','XXX'],
+'M':['X.X','XXX','XXX','X.X','X.X'],
+'N':['X.X','XXX','X.X','X.X','X.X'],
+'O':['XXX','X.X','X.X','X.X','XXX'],
+'P':['XXX','X.X','XXX','X..','X..'],
+'Q':['XXX','X.X','X.X','XXX','.X.'],
+'R':['XX.','X.X','XX.','X.X','X.X'],
+'S':['XXX','X..','XXX','..X','XXX'],
+'T':['XXX','..X','..X','..X','..X'],
+'U':['X.X','X.X','X.X','X.X','XXX'],
+'V':['X.X','X.X','X.X','.X.','.X.'],
+'W':['X.X','X.X','XXX','XXX','X.X'],
+'X':['X.X','X.X','.X.','X.X','X.X'],
+'Y':['X.X','X.X','XXX','..X','..X'],
+'Z':['XXX','..X','.X.','X..','XXX'],
+'!':['.X.','.X.','.X.','...','.X.'],
+'.':['...','...','...','...','.X.'],
+':':['...','.X.','...','.X.','...'],
+' ':['...','...','...','...','...'],
+};
+
+function drawChar(ch,ox,oy,sc){
+  sc=sc||4;
+  let d=F[ch]; if(!d)return;
+  for(let y=0;y<5;y++)
+    for(let x=0;x<3;x++)
+      if(d[y][x]==='X')
+        rect(ox+x*sc,oy+y*sc,sc,sc,1);
+}
+function drawText(str,ox,oy,sc){
+  sc=sc||4;
+  let sp=4*sc;
+  for(let i=0;i<str.length;i++)
+    drawChar(str[i],ox+i*sp,oy,sc);
+}
+function tw(str,sc){sc=sc||4;return str.length*4*sc-sc;}
+
+// ============ Particles ============
+let parts=[];
+function addP(x,y,vx,vy,life){
+  parts.push({x,y,vx,vy,life,ml:life});
+}
+function updateParts(){
+  parts=parts.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life--;
+    return p.life>0;
+  });
+}
+function drawParts(){
+  parts.forEach(p=>{
+    if(p.life>0){
+      let sz=p.life>10?2:1;
+      rect(Math.round(p.x),Math.round(p.y),sz,sz,1);
+    }
+  });
+}
+function spawnFX(cx,cy){
+  for(let i=0;i<12;i++){
+    let a=Math.random()*Math.PI*2,sp=Math.random()*1.5+0.5;
+    addP(cx+Math.random()*20-10,cy+Math.random()*12-6,
+      Math.cos(a)*sp,Math.sin(a)*sp-1,25+Math.random()*20|0);
+  }
+}
+
+// ============ Game State ============
+const STAGE_NAME=['EGG','BABY','YOUNG','ADULT'];
+const STAGE_GROW=[15,40,80];
+
+let G={
+  stage:0,hunger:80,happy:80,clean:80,growth:0,age:0,
+  poops:[],alive:true,sleeping:false,sleepT:0,
+  petX:128,petVX:0,petDir:1,moveT:0,
+  frame:0,act:null,actT:0,
+  msg:'',msgT:0,starveT:0,hovBtn:-1,
+};
+
+function msg(m){G.msg=m;G.msgT=90;}
+
+// ============ Actions ============
+function doFeed(){
+  if(!G.alive)return;
+  if(G.sleeping){msg('WAKE!');return;}
+  if(G.stage===0){msg('EGG!');return;}
+  if(G.hunger>=95){msg('FULL!');return;}
+  G.hunger=Math.min(100,G.hunger+22);
+  G.growth+=1;G.act='feed';G.actT=25;
+  spawnFX(G.petX+32,140);
+  msg('YUM!');
+}
+function doPlay(){
+  if(!G.alive)return;
+  if(G.sleeping){msg('WAKE!');return;}
+  if(G.stage===0){msg('EGG!');return;}
+  if(G.hunger<15){msg('WEAK!');return;}
+  G.happy=Math.min(100,G.happy+22);
+  G.hunger=Math.max(0,G.hunger-8);
+  G.growth+=2;G.act='play';G.actT=35;
+  spawnFX(G.petX,110);
+  msg('FUN!');
+}
+function doClean(){
+  if(!G.alive)return;
+  if(G.poops.length===0&&G.clean>=95){msg('OK!');return;}
+  G.poops=[];G.clean=100;G.growth+=1;
+  G.act='clean';G.actT=15;
+  spawnFX(128,180);
+  msg('CLEAN!');
+}
+function doSleep(){
+  if(!G.alive)return;
+  if(G.stage===0){msg('EGG!');return;}
+  if(G.sleeping){G.sleeping=false;msg('HI!');return;}
+  G.sleeping=true;G.sleepT=160;
+  msg('ZZZ...');
+}
+
+// ============ Buttons ============
+const BTNS=[
+  {x:2,y:218,w:60,h:30,label:'FEED',act:'feed'},
+  {x:66,y:218,w:60,h:30,label:'PLAY',act:'play'},
+  {x:130,y:218,w:60,h:30,label:'WASH',act:'clean'},
+  {x:194,y:218,w:60,h:30,label:'REST',act:'sleep'},
+];
+
+// ============ Game Tick (500ms) ============
+let tick=0;
+function gameTick(){
+  if(!G.alive)return;
+  tick++;G.age++;G.frame++;
+
+  if(G.stage>0){
+    if(G.sleeping){
+      G.hunger=Math.max(0,G.hunger-0.35);
+      G.happy=Math.min(100,G.happy+0.4);
+      G.sleepT--;
+      if(G.sleepT<=0){G.sleeping=false;msg('HI!');}
+    }else{
+      G.hunger=Math.max(0,G.hunger-0.55);
+      G.happy=Math.max(0,G.happy-0.3);
+      G.clean=Math.max(0,G.clean-0.12);
+    }
+  }
+
+  if(G.stage>0&&tick%14===0&&Math.random()<0.35){
+    let ppx=32+Math.floor(Math.random()*192);
+    let ppy=188+Math.floor(Math.random()*12);
+    G.poops.push({x:ppx,y:ppy});
+    G.clean=Math.max(0,G.clean-8);
+    if(G.poops.length>5)G.poops.shift();
+  }
+
+  if(!G.sleeping&&G.stage>0&&G.actT<=0){
+    G.moveT--;
+    if(G.moveT<=0){
+      G.moveT=8+Math.floor(Math.random()*20);
+      if(Math.random()<0.4){
+        G.petVX=(Math.random()<0.5?-1:1)*1.2;
+        G.petDir=G.petVX>0?1:-1;
+      }else G.petVX=0;
+    }
+    G.petX+=G.petVX;
+    G.petX=Math.max(56,Math.min(200,G.petX));
+  }
+
+  if(G.stage===0){
+    G.growth+=0.12;
+  }else if(G.hunger>25&&G.happy>15&&G.clean>15){
+    G.growth+=0.15;
+  }
+
+  if(G.stage<3&&G.growth>=STAGE_GROW[G.stage]){
+    G.growth=0;G.stage++;
+    spawnFX(G.petX,140);
+    if(G.stage===1)msg('BORN!');
+    else if(G.stage===2)msg('GROW!');
+    else{G.growth=100;msg('ADULT!');}
+  }
+
+  if(G.stage>0&&G.hunger<=0){
+    G.starveT++;
+    if(G.happy<=0)G.starveT++;
+    if(G.starveT>40){G.alive=false;}
+  }else G.starveT=0;
+
+  if(G.actT>0)G.actT--;
+  if(G.actT<=0)G.act=null;
+  if(G.msgT>0)G.msgT--;
+  updateParts();
+}
+
+// ============ Drawing: Egg ============
+function drawEgg(cx2,cy2,crack){
+  ellip(cx2,cy2,20,28,1);
+  // Speckles on egg
+  for(let i=0;i<8;i++){
+    let sx=cx2-12+((i*7+3)%24);
+    let sy=cy2-20+((i*11+5)%40);
+    px(sx,sy,0);
+  }
+  // Cracks (white lines)
+  if(crack>0.3) ln(cx2-8,cy2-12,cx2,cy2,0);
+  if(crack>0.55){
+    ln(cx2,cy2,cx2+8,cy2-8,0);
+    ln(cx2-8,cy2-12,cx2-12,cy2+4,0);
+  }
+  if(crack>0.8){
+    ln(cx2+8,cy2-8,cx2+12,cy2+8,0);
+    ln(cx2-12,cy2+4,cx2-4,cy2+16,0);
+  }
+}
+
+// ============ Drawing: Chick ============
+function drawChick(cx2,cy2,stage){
+  let S=[null,{br:20,hr:12,ll:8},{br:28,hr:16,ll:8},{br:36,hr:20,ll:12}][stage];
+  let d=G.petDir;
+
+  // Body
+  circ(cx2,cy2,S.br,1);
+
+  // Head
+  let hy=cy2-S.br-S.hr+12;
+  circ(cx2,hy,S.hr,1);
+
+  // Eye (white area)
+  let ex=cx2+d*Math.ceil(S.hr*0.35);
+  let ey=hy-Math.floor(S.hr*0.25);
+  rect(ex-2,ey-2,6,6,0); // white eye
+  rect(ex,ey,2,2,1);     // pupil
+
+  // Beak
+  let bx=cx2+d*(S.hr+2);
+  // Upper beak
+  rect(bx,hy-3,d*5,4,1);
+  // Lower beak
+  rect(bx+d,hy+1,d*4,3,1);
+  // Open beak when hungry
+  if(G.hunger<25&&G.frame%20<10){
+    rect(bx,hy+1,d*5,3,0); // gap
+    rect(bx+d*2,hy+4,d*3,3,1); // open mouth
+  }
+
+  // Wing
+  let wx=cx2-d*Math.floor(S.br*0.5);
+  let wy=cy2;
+  // Wing shape
+  rect(wx-d*2,wy,8,4,1);
+  rect(wx-d*3,wy+4,8,4,1);
+  rect(wx-d*2,wy+8,6,4,1);
+  if(stage>=2){
+    rect(wx-d*4,wy+4,6,4,1);
+    rect(wx-d*3,wy+8,8,4,1);
+    rect(wx-d*2,wy+12,6,4,1);
+  }
+
+  // Legs
+  let ly=cy2+S.br;
+  rect(cx2-8,ly,4,S.ll,1);
+  rect(cx2+4,ly,4,S.ll,1);
+  // Feet
+  rect(cx2-12,ly+S.ll-2,8,3,1);
+  rect(cx2+4,ly+S.ll-2,8,3,1);
+
+  // Comb (adult only)
+  if(stage===3){
+    rect(cx2-4,hy-S.hr-4,10,4,1);
+    rect(cx2-2,hy-S.hr-8,6,4,1);
+    rect(cx2,hy-S.hr-10,4,3,1);
+  }
+
+  // Tail (young and adult)
+  if(stage>=2){
+    let tx=cx2-d*(S.br+4);
+    let ty=cy2-8;
+    rect(tx,ty,6,4,1);
+    rect(tx-d*2,ty-4,6,4,1);
+    if(stage===3){
+      rect(tx-d*2,ty,6,4,1);
+      rect(tx-d*4,ty-8,6,4,1);
+      rect(tx-d*4,ty-4,6,4,1);
+    }
+  }
+
+  // Cheek blush when happy
+  if(G.happy>60){
+    let cheekX=cx2+d*2;
+    let cheekY=hy+S.hr-2;
+    // Light blush pattern (checkerboard)
+    for(let by=0;by<4;by++)
+      for(let bx2=0;bx2<4;bx2++)
+        if((bx2+by)%2===0) px(cheekX+bx2,cheekY+by,0);
+  }
+}
+
+// ============ Drawing: Poop ============
+function drawPoop(x,y){
+  // Top swirl
+  rect(x+6,y,8,4,1);
+  rect(x+8,y-2,4,2,1);
+  // Middle
+  rect(x+2,y+4,16,5,1);
+  // Bottom
+  rect(x+4,y+9,12,4,1);
+  // Highlight
+  rect(x+8,y+1,2,2,0);
+  // Stink lines
+  if(rf%24<12){
+    px(x+20,y-2,1);px(x+22,y-4,1);px(x+24,y-6,1);
+    px(x+18,y+2,1);px(x+20,y,1);
+  }
+}
+
+// ============ Rendering ============
+function render(){
+  rf++;
+  fb.fill(0);
+
+  // Border
+  outline(0,0,256,256);
+
+  // === Stats (rows 4-48) ===
+  // Row 4-24: Hunger + Happiness
+  drawIcon(ICON_HEART,8,4,4);
+  let hBlink=G.hunger<20&&rf%16<8;
+  if(!hBlink) bar(36,4,80,20,G.hunger/100);
+  else outline(36,4,80,20);
+
+  drawIcon(ICON_STAR,140,4,4);
+  let pBlink=G.happy<20&&rf%16<8;
+  if(!pBlink) bar(168,4,80,20,G.happy/100);
+  else outline(168,4,80,20);
+
+  // Row 28-48: Cleanliness + Growth
+  drawIcon(ICON_DROP,8,28,4);
+  bar(36,28,80,20,G.clean/100);
+
+  drawIcon(ICON_ARROW,140,28,4);
+  let gRatio=G.stage===3?1:G.growth/STAGE_GROW[G.stage];
+  bar(168,28,80,20,gRatio);
+
+
+  // Stage + Time + Message (all text stays in stats area, never in pet area)
+  if(!G.alive){
+    // Death text in stats area
+    drawText('GAME OVER',8,56,4);
+    if(rf%40<28) drawText('RETRY',140,56,4);
+  }else if(G.msgT>0&&G.msg){
+    // Action messages in stats area (small font)
+    drawText(STAGE_NAME[G.stage],8,52,3);
+    let mw=tw(G.msg,3);
+    drawText(G.msg,Math.floor((256-mw)/2),62,3);
+  }else{
+    drawText(STAGE_NAME[G.stage],8,56,4);
+    let sec=Math.floor(G.age/2);
+    let mm=Math.floor(sec/60),ss=sec%60;
+    let ts=(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+    drawText(ts,188,56,4);
+  }
+
+  // Separator
+  rect(2,76,252,2,1);
+
+  // === Pet Area (rows 80-208) — NO TEXT allowed ===
+  // Ground
+  rect(2,200,252,2,1);
+  // Ground texture (grass tufts)
+  for(let gx=4;gx<252;gx+=12){
+    px(gx,202,1);px(gx+1,203,1);px(gx+2,202,1);
+  }
+
+  // Poop
+  G.poops.forEach(p=>drawPoop(p.x,p.y));
+
+  // Pet
+  let pcx=Math.round(G.petX);
+  let pcy=0;
+
+  if(G.stage===0){
+    pcy=168;
+    let crackRatio=G.growth/STAGE_GROW[0];
+    let wobble=Math.sin(G.frame*0.3)*crackRatio*8;
+    pcx+=Math.round(wobble);
+    drawEgg(pcx,pcy,crackRatio);
+    // Egg hint: pulsing circle instead of text
+    if(rf%60<40){
+      let pulse=4+Math.round(Math.sin(rf*0.2)*2);
+      outline(pcx-pulse,pcy-32-pulse,pulse*2,pulse*2);
+    }
+  }else{
+    let S=[null,{br:20,hr:12,ll:8},{br:28,hr:16,ll:8},{br:36,hr:20,ll:12}][G.stage];
+    pcy=200-S.br-12;
+
+    let oy=0,ox=0;
+    if(G.act==='feed'){
+      oy=Math.round(Math.sin(G.actT*0.5)*6);
+    }else if(G.act==='play'){
+      oy=-Math.round(Math.abs(Math.sin(G.actT*0.25))*24);
+      ox=Math.round(Math.sin(G.actT*0.4)*12);
+    }else if(G.sleeping){
+      oy=Math.round(Math.sin(G.frame*0.1))*2;
+    }else if(G.alive){
+      let bounce=G.happy>60?6:2;
+      oy=Math.round(Math.sin(G.frame*0.15)*bounce);
+    }
+
+    drawChick(pcx+ox,pcy+oy,G.stage);
+
+    // Sleep indicator: small floating dots above head (no text)
+    if(G.sleeping){
+      let dotBaseY=pcy-S.br-S.hr-8;
+      for(let i=0;i<3;i++){
+        let dx=pcx+16+i*10;
+        let dy=dotBaseY-i*8-Math.round(Math.sin(G.frame*0.08+i*1.5)*4);
+        circ(dx,dy,2+i,1);
+      }
+    }
+
+    // Hungry sweat drop
+    if(G.hunger<25&&rf%30<15){
+      let sy=pcy-24+Math.round(Math.sin(rf*0.3))*2;
+      rect(pcx-32,sy,4,6,1);
+      rect(pcx-30,sy-2,2,2,1);
+    }
+
+    // Sad tear
+    if(G.happy<20&&rf%20<10){
+      rect(pcx+20,pcy-12,3,6,1);
+    }
+  }
+
+  // Particles
+  drawParts();
+
+  // Separator
+  rect(2,212,252,2,1);
+
+  // === Buttons (rows 218-248) ===
+  BTNS.forEach((b,i)=>{
+    let hov=G.hovBtn===i;
+    outline(b.x,b.y,b.w,b.h);
+    if(hov) rect(b.x+1,b.y+1,b.w-2,b.h-2,1);
+    // Label centered, font scale 3
+    let lw=tw(b.label,3);
+    let lx=b.x+Math.floor((b.w-lw)/2);
+    let ly=b.y+Math.floor((b.h-15)/2);
+    for(let ci=0;ci<b.label.length;ci++){
+      let d=F[b.label[ci]];
+      if(!d)continue;
+      for(let y=0;y<5;y++)
+        for(let x=0;x<3;x++)
+          if(d[y][x]==='X')
+            rect(lx+ci*12+x*3,ly+y*3,3,3,hov?0:1);
+    }
+  });
+
+  // X eyes on dead chick (visual only, no text in pet area)
+  if(!G.alive&&G.stage>0){
+    let S=[null,{br:20,hr:12,ll:8},{br:28,hr:16,ll:8},{br:36,hr:20,ll:12}][G.stage];
+    let dy=200-S.br-12;
+    let hy=dy-S.br-S.hr+12;
+    let ex=pcx+G.petDir*Math.ceil(S.hr*0.35);
+    let ey=hy-Math.floor(S.hr*0.25);
+    rect(ex-3,ey-3,8,8,0);
+    ln(ex-3,ey-3,ex+4,ey+4,1);
+    ln(ex+4,ey-3,ex-3,ey+4,1);
+  }
+
+  // === Render to Canvas ===
+  ctx.fillStyle='#e8e0c8';
+  ctx.fillRect(0,0,W*CELL,H*CELL);
+
+  ctx.fillStyle='#1a1a1a';
+  for(let y=0;y<H;y++)
+    for(let x=0;x<W;x++)
+      if(fb[y*W+x])
+        ctx.fillRect(x*CELL,y*CELL,CELL,CELL);
+
+  // Scanlines
+  ctx.fillStyle='rgba(0,0,0,0.03)';
+  for(let y=0;y<H*CELL;y+=2)
+    ctx.fillRect(0,y,W*CELL,1);
+}
+
+// ============ Input ============
+function getGridPos(e){
+  let r=cv.getBoundingClientRect();
+  let sx=(W*CELL)/r.width, sy=(H*CELL)/r.height;
+  let mx=Math.floor((e.clientX-r.left)*sx/CELL);
+  let my=Math.floor((e.clientY-r.top)*sy/CELL);
+  return {x:mx,y:my};
+}
+
+cv.addEventListener('mousemove',e=>{
+  let p=getGridPos(e);
+  G.hovBtn=-1;
+  BTNS.forEach((b,i)=>{
+    if(p.x>=b.x&&p.x<b.x+b.w&&p.y>=b.y&&p.y<b.y+b.h)
+      G.hovBtn=i;
+  });
+  cv.style.cursor=G.hovBtn>=0?'pointer':'default';
+});
+
+cv.addEventListener('click',e=>{
+  let p=getGridPos(e);
+  BTNS.forEach(b=>{
+    if(p.x>=b.x&&p.x<b.x+b.w&&p.y>=b.y&&p.y<b.y+b.h){
+      if(b.act==='feed')doFeed();
+      else if(b.act==='play')doPlay();
+      else if(b.act==='clean')doClean();
+      else if(b.act==='sleep')doSleep();
+    }
+  });
+  if(p.y>=80&&p.y<200&&G.alive){
+    if(G.stage===0){
+      G.growth=Math.min(STAGE_GROW[0],G.growth+0.5);
+      spawnFX(p.x,p.y);
+    }else{
+      G.happy=Math.min(100,G.happy+2);
+      spawnFX(p.x,p.y);
+    }
+  }
+});
+
+cv.addEventListener('dblclick',e=>{
+  if(!G.alive){
+    G={stage:0,hunger:80,happy:80,clean:80,growth:0,age:0,
+       poops:[],alive:true,sleeping:false,sleepT:0,
+       petX:128,petVX:0,petDir:1,moveT:0,
+       frame:0,act:null,actT:0,
+       msg:'',msgT:0,starveT:0,hovBtn:-1};
+    tick=0;parts=[];
+    msg('NEW LIFE!');
+  }
+});
+
+cv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  let t=e.touches[0];
+  let p=getGridPos(t);
+  BTNS.forEach(b=>{
+    if(p.x>=b.x&&p.x<b.x+b.w&&p.y>=b.y&&p.y<b.y+b.h){
+      if(b.act==='feed')doFeed();
+      else if(b.act==='play')doPlay();
+      else if(b.act==='clean')doClean();
+      else if(b.act==='sleep')doSleep();
+    }
+  });
+  if(p.y>=80&&p.y<200&&G.alive){
+    if(G.stage===0){
+      G.growth=Math.min(STAGE_GROW[0],G.growth+0.5);
+      spawnFX(p.x,p.y);
+    }else{
+      G.happy=Math.min(100,G.happy+2);
+      spawnFX(p.x,p.y);
+    }
+  }
+},{passive:false});
+
+// ============ Main Loop ============
+setInterval(gameTick,500);
+(function frame(){render();requestAnimationFrame(frame);})();
+</script>
+</body>
+</html>
