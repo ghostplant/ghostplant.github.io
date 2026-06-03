@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音频可视化播放器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a1a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 30px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, #00d2ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+
+  /* ── 拖拽上传区 ── */
+  .drop-zone {
+    border: 2px dashed #444;
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .3s;
+    background: rgba(255,255,255,.02);
+    margin-bottom: 24px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #7b2ff7;
+    background: rgba(123,47,247,.08);
+  }
+  .drop-zone svg { margin-bottom: 10px; }
+  .drop-zone p { font-size: 15px; color: #999; }
+  .drop-zone .accent { color: #7b2ff7; font-weight: 600; }
+  #fileInput { display: none; }
+
+  /* ── 播放信息栏 ── */
+  .info-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 14px 20px;
+    background: rgba(255,255,255,.04);
+    border-radius: 12px;
+  }
+  .info-bar .track-name {
+    flex: 1;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ccc;
+  }
+  .info-bar .track-name.no-track { color: #555; font-style: italic; }
+
+  /* ── 控制按钮 ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: #bbb;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ctrl-btn:hover { color: #fff; transform: scale(1.15); }
+  .ctrl-btn.play-btn {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7b2ff7, #00d2ff);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(123,47,247,.4);
+  }
+  .ctrl-btn.play-btn:hover { box-shadow: 0 0 30px rgba(123,47,247,.7); }
+
+  /* ── 进度条 ── */
+  .progress-wrap {
+    margin-bottom: 20px;
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .progress-row .time { font-size: 12px; color: #888; min-width: 44px; }
+  .progress-row .time.right { text-align: right; }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7b2ff7, #00d2ff);
+    border-radius: 3px;
+    width: 0%;
+    transition: width .1s linear;
+  }
+
+  /* ── 音量 ── */
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .volume-row svg { color: #888; }
+  .volume-slider {
+    -webkit-appearance: none;
+    width: 120px;
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    outline: none;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #7b2ff7;
+    cursor: pointer;
+  }
+
+  /* ── 可视化画布 ── */
+  .viz-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 640px) {
+    .viz-section { grid-template-columns: 1fr; }
+  }
+  .viz-card {
+    background: rgba(255,255,255,.03);
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .viz-card h3 {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .viz-card canvas {
+    width: 100%;
+    height: 160px;
+    display: block;
+    border-radius: 8px;
+  }
+
+  /* ── 全宽波形 ── */
+  .viz-card.full {
+    grid-column: 1 / -1;
+  }
+  .viz-card.full canvas {
+    height: 120px;
+  }
+
+  /* ── 实时数据面板 ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-item {
+    background: rgba(255,255,255,.03);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,.05);
+  }
+  .stat-item .label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .stat-item .value {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #00d2ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-item .unit {
+    font-size: 11px;
+    color: #666;
+    margin-left: 2px;
+  }
+
+  /* ── 播放列表 ── */
+  .playlist {
+    margin-top: 10px;
+  }
+  .playlist h3 {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .playlist-list {
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .playlist-list li {
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #aaa;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .playlist-list li:hover { background: rgba(255,255,255,.05); color: #fff; }
+  .playlist-list li.active {
+    background: rgba(123,47,247,.15);
+    color: #fff;
+  }
+  .playlist-list li .idx {
+    font-size: 12px;
+    color: #555;
+    min-width: 22px;
+  }
+  .playlist-list li.active .idx { color: #7b2ff7; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🎵 音频可视化播放器</h1>
+
+  <!-- 拖拽上传 -->
+  <div class="drop-zone" id="dropZone">
+    <svg width="48" height="48" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 32V16m0 0l-7 7m7-7l7 7"/><rect x="6" y="38" width="36" height="4" rx="2"/></svg>
+    <p>拖拽 MP3 文件到此处，或 <span class="accent">点击选择文件</span></p>
+    <input type="file" id="fileInput" accept="audio/*" multiple>
+  </div>
+
+  <!-- 曲目信息 -->
+  <div class="info-bar">
+    <span class="track-name no-track" id="trackName">未加载音频</span>
+  </div>
+
+  <!-- 播放控制 -->
+  <div class="controls">
+    <button class="ctrl-btn" id="prevBtn" title="上一首">
+      <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+    </button>
+    <button class="ctrl-btn play-btn" id="playBtn" title="播放/暂停">
+      <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <button class="ctrl-btn" id="nextBtn" title="下一首">
+      <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M16 18h2V6h-2zm-8.5-6l8.5 6V6z" transform="scale(-1,1) translate(-24,0)"/></svg>
+    </button>
+  </div>
+
+  <!-- 进度 -->
+  <div class="progress-wrap">
+    <div class="progress-row">
+      <span class="time" id="curTime">0:00</span>
+      <div class="progress-track" id="progressTrack">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span class="time right" id="durTime">0:00</span>
+    </div>
+  </div>
+
+  <!-- 音量 -->
+  <div class="volume-row">
+    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.49 4.49 0 002.5-3.5zM14 3.23v2.06a6.99 6.99 0 010 13.42v2.06A9 9 0 0014 3.23z"/></svg>
+    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80">
+  </div>
+
+  <!-- 可视化 -->
+  <div class="viz-section">
+    <div class="viz-card">
+      <h3>频谱分析</h3>
+      <canvas id="spectrumCanvas"></canvas>
+    </div>
+    <div class="viz-card">
+      <h3>实时波形</h3>
+      <canvas id="waveformCanvas"></canvas>
+    </div>
+    <div class="viz-card full">
+      <h3>频谱瀑布图</h3>
+      <canvas id="waterfallCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 实时数据 -->
+  <div class="stats-grid">
+    <div class="stat-item">
+      <div class="label">峰值频率</div>
+      <div><span class="value" id="peakFreq">0</span><span class="unit">Hz</span></div>
+    </div>
+    <div class="stat-item">
+      <div class="label">平均振幅</div>
+      <div><span class="value" id="avgAmp">0</span><span class="unit">dB</span></div>
+    </div>
+    <div class="stat-item">
+      <div class="label">RMS 响度</div>
+      <div><span class="value" id="rmsVal">0</span><span class="unit"></span></div>
+    </div>
+    <div class="stat-item">
+      <div class="label">低频能量</div>
+      <div><span class="value" id="lowEnergy">0</span><span class="unit">%</span></div>
+    </div>
+    <div class="stat-item">
+      <div class="label">中频能量</div>
+      <div><span class="value" id="midEnergy">0</span><span class="unit">%</span></div>
+    </div>
+    <div class="stat-item">
+      <div class="label">高频能量</div>
+      <div><span class="value" id="highEnergy">0</span><span class="unit">%</span></div>
+    </div>
+  </div>
+
+  <!-- 播放列表 -->
+  <div class="playlist" id="playlistSection" style="display:none">
+    <h3>播放列表</h3>
+    <ul class="playlist-list" id="playlistList"></ul>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ─── DOM ───
+  const dropZone      = document.getElementById('dropZone');
+  const fileInput     = document.getElementById('fileInput');
+  const trackName     = document.getElementById('trackName');
+  const playBtn       = document.getElementById('playBtn');
+  const playIcon      = document.getElementById('playIcon');
+  const prevBtn       = document.getElementById('prevBtn');
+  const nextBtn       = document.getElementById('nextBtn');
+  const progressTrack = document.getElementById('progressTrack');
+  const progressFill  = document.getElementById('progressFill');
+  const curTimeEl     = document.getElementById('curTime');
+  const durTimeEl     = document.getElementById('durTime');
+  const volumeSlider  = document.getElementById('volumeSlider');
+  const specCanvas    = document.getElementById('spectrumCanvas');
+  const waveCanvas    = document.getElementById('waveformCanvas');
+  const fallCanvas    = document.getElementById('waterfallCanvas');
+  const playlistSec   = document.getElementById('playlistSection');
+  const playlistList  = document.getElementById('playlistList');
+
+  // ─── Audio ───
+  let audioCtx   = null;
+  let analyser   = null;
+  let gainNode   = null;
+  let sourceNode = null;
+  const audio    = new Audio();
+  audio.crossOrigin = 'anonymous';
+
+  let playlist     = [];   // {name, url}
+  let currentIndex = -1;
+  let isPlaying    = false;
+  let animId       = null;
+
+  // Waterfall history
+  const waterfallHistory = [];
+  const WATERFALL_ROWS   = 80;
+
+  // ─── Init Audio Context ───
+  function initAudioCtx() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.82;
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = volumeSlider.value / 100;
+    sourceNode = audioCtx.createMediaElementSource(audio);
+    sourceNode.connect(analyser);
+    analyser.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+  }
+
+  // ─── File Handling ───
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+  function handleFiles(files) {
+    if (!files.length) return;
+    initAudioCtx();
+    const startIdx = playlist.length;
+    for (const f of files) {
+      if (!f.type.startsWith('audio/')) continue;
+      playlist.push({ name: f.name, url: URL.createObjectURL(f) });
+    }
+    renderPlaylist();
+    if (currentIndex === -1 && playlist.length) {
+      loadTrack(startIdx);
+    }
+  }
+
+  // ─── Playlist ───
+  function renderPlaylist() {
+    if (!playlist.length) { playlistSec.style.display = 'none'; return; }
+    playlistSec.style.display = '';
+    playlistList.innerHTML = '';
+    playlist.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = i === currentIndex ? 'active' : '';
+      li.innerHTML = `<span class="idx">${i + 1}</span><span>${t.name}</span>`;
+      li.onclick = () => loadTrack(i);
+      playlistList.appendChild(li);
+    });
+  }
+
+  function loadTrack(idx) {
+    if (idx < 0 || idx >= playlist.length) return;
+    currentIndex = idx;
+    const track = playlist[idx];
+    audio.src = track.url;
+    trackName.textContent = track.name;
+    trackName.classList.remove('no-track');
+    waterfallHistory.length = 0;
+    renderPlaylist();
+    playAudio();
+  }
+
+  // ─── Playback ───
+  function playAudio() {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    audio.play();
+    isPlaying = true;
+    updatePlayIcon();
+    startViz();
+  }
+
+  function pauseAudio() {
+    audio.pause();
+    isPlaying = false;
+    updatePlayIcon();
+  }
+
+  function updatePlayIcon() {
+    playIcon.innerHTML = isPlaying
+      ? '<path d="M6 4h4v16H6zm8 0h4v16h-4z"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+  }
+
+  playBtn.onclick = () => {
+    if (!playlist.length) return;
+    initAudioCtx();
+    isPlaying ? pauseAudio() : playAudio();
+  };
+
+  prevBtn.onclick = () => {
+    if (!playlist.length) return;
+    loadTrack((currentIndex - 1 + playlist.length) % playlist.length);
+  };
+  nextBtn.onclick = () => {
+    if (!playlist.length) return;
+    loadTrack((currentIndex + 1) % playlist.length);
+  };
+
+  audio.addEventListener('ended', () => {
+    if (playlist.length > 1) {
+      loadTrack((currentIndex + 1) % playlist.length);
+    } else {
+      isPlaying = false;
+      updatePlayIcon();
+    }
+  });
+
+  // ─── Progress ───
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progressFill.style.width = pct + '%';
+    curTimeEl.textContent = fmtTime(audio.currentTime);
+    durTimeEl.textContent = fmtTime(audio.duration);
+  });
+
+  progressTrack.addEventListener('click', e => {
+    if (!audio.duration) return;
+    const rect = progressTrack.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = ratio * audio.duration;
+  });
+
+  function fmtTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  // ─── Volume ───
+  volumeSlider.addEventListener('input', () => {
+    const v = volumeSlider.value / 100;
+    if (gainNode) gainNode.gain.value = v;
+    audio.volume = v;
+  });
+
+  // ─── Canvas Setup ───
+  function setupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+
+  // ─── Visualization Loop ───
+  function startViz() {
+    if (animId) return;
+    draw();
+  }
+
+  function draw() {
+    animId = requestAnimationFrame(draw);
+    if (!analyser) return;
+
+    const bufLen  = analyser.frequencyBinCount;
+    const freqData = new Uint8Array(bufLen);
+    const timeData = new Uint8Array(bufLen);
+    analyser.getByteFrequencyData(freqData);
+    analyser.getByteTimeDomainData(timeData);
+
+    drawSpectrum(freqData, bufLen);
+    drawWaveform(timeData, bufLen);
+    drawWaterfall(freqData, bufLen);
+    updateStats(freqData, bufLen, timeData);
+  }
+
+  // ── 频谱柱状图 ──
+  function drawSpectrum(freqData, bufLen) {
+    const { ctx, w, h } = setupCanvas(specCanvas);
+    ctx.clearRect(0, 0, w, h);
+
+    const barCount = 64;
+    const step = Math.floor(bufLen / barCount);
+    const barW = (w / barCount) * 0.75;
+    const gap  = (w / barCount) * 0.25;
+
+    for (let i = 0; i < barCount; i++) {
+      // average a few bins
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += freqData[i * step + j];
+      const val = sum / step / 255;
+      const barH = val * h * 0.92;
+
+      const x = i * (barW + gap) + gap / 2;
+      const gradient = ctx.createLinearGradient(x, h, x, h - barH);
+      gradient.addColorStop(0, '#7b2ff7');
+      gradient.addColorStop(0.5, '#00d2ff');
+      gradient.addColorStop(1, '#00ffc8');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.roundRect(x, h - barH, barW, barH, [3, 3, 0, 0]);
+      ctx.fill();
+
+      // glow
+      ctx.shadowColor = '#7b2ff7';
+      ctx.shadowBlur = 6 * val;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── 波形 ──
+  function drawWaveform(timeData, bufLen) {
+    const { ctx, w, h } = setupCanvas(waveCanvas);
+    ctx.clearRect(0, 0, w, h);
+
+    // center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+
+    // waveform
+    ctx.lineWidth = 2;
+    const gradient = ctx.createLinearGradient(0, 0, w, 0);
+    gradient.addColorStop(0, '#7b2ff7');
+    gradient.addColorStop(0.5, '#00d2ff');
+    gradient.addColorStop(1, '#00ffc8');
+    ctx.strokeStyle = gradient;
+    ctx.beginPath();
+
+    const sliceW = w / bufLen;
+    for (let i = 0; i < bufLen; i++) {
+      const v = timeData[i] / 128.0;
+      const y = (v * h) / 2;
+      if (i === 0) ctx.moveTo(0, y);
+      else ctx.lineTo(i * sliceW, y);
+    }
+    ctx.stroke();
+
+    // filled area
+    ctx.lineTo(w, h / 2);
+    ctx.lineTo(0, h / 2);
+    ctx.closePath();
+    const fillGrad = ctx.createLinearGradient(0, 0, w, 0);
+    fillGrad.addColorStop(0, 'rgba(123,47,247,0.12)');
+    fillGrad.addColorStop(0.5, 'rgba(0,210,255,0.12)');
+    fillGrad.addColorStop(1, 'rgba(0,255,200,0.12)');
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+  }
+
+  // ── 瀑布图 ──
+  function drawWaterfall(freqData, bufLen) {
+    const { ctx, w, h } = setupCanvas(fallCanvas);
+
+    // push current frame
+    const row = new Uint8Array(freqData.length);
+    row.set(freqData);
+    waterfallHistory.push(row);
+    if (waterfallHistory.length > WATERFALL_ROWS) waterfallHistory.shift();
+
+    ctx.clearRect(0, 0, w, h);
+    const rowH = h / WATERFALL_ROWS;
+    const cols = 128;
+    const step = Math.floor(bufLen / cols);
+
+    for (let r = 0; r < waterfallHistory.length; r++) {
+      const data = waterfallHistory[r];
+      const y = h - (waterfallHistory.length - r) * rowH;
+      for (let c = 0; c < cols; c++) {
+        let sum = 0;
+        for (let j = 0; j < step; j++) sum += data[c * step + j];
+        const val = sum / step / 255;
+        const hue = 260 - val * 200; // purple → cyan → green
+        const lightness = 10 + val * 50;
+        ctx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
+        ctx.fillRect(c * (w / cols), y, w / cols + 0.5, rowH + 0.5);
+      }
+    }
+  }
+
+  // ── Stats ──
+  function updateStats(freqData, bufLen, timeData) {
+    // peak frequency
+    let maxVal = 0, maxIdx = 0;
+    for (let i = 0; i < bufLen; i++) {
+      if (freqData[i] > maxVal) { maxVal = freqData[i]; maxIdx = i; }
+    }
+    const nyquist = audioCtx.sampleRate / 2;
+    const peakFreq = Math.round(maxIdx * nyquist / bufLen);
+    document.getElementById('peakFreq').textContent = peakFreq;
+
+    // average amplitude (dB-ish)
+    let sumSq = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const norm = (timeData[i] - 128) / 128;
+      sumSq += norm * norm;
+    }
+    const rms = Math.sqrt(sumSq / bufLen);
+    const db = rms > 0 ? Math.round(20 * Math.log10(rms + 1e-10)) : -100;
+    document.getElementById('avgAmp').textContent = Math.max(db, -60);
+    document.getElementById('rmsVal').textContent = rms.toFixed(3);
+
+    // band energy
+    const lowEnd  = Math.floor(bufLen * 300 / nyquist);   // ~300 Hz
+    const midEnd  = Math.floor(bufLen * 4000 / nyquist);  // ~4 kHz
+    let lowSum = 0, midSum = 0, highSum = 0, totalSum = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const v = freqData[i];
+      totalSum += v;
+      if (i < lowEnd) lowSum += v;
+      else if (i < midEnd) midSum += v;
+      else highSum += v;
+    }
+    const pct = v => totalSum > 0 ? Math.round(v / totalSum * 100) : 0;
+    document.getElementById('lowEnergy').textContent  = pct(lowSum);
+    document.getElementById('midEnergy').textContent  = pct(midSum);
+    document.getElementById('highEnergy').textContent = pct(highSum);
+  }
+
+  // ─── roundRect polyfill ───
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+      const r = Array.isArray(radii) ? radii[0] : (radii || 0);
+      this.moveTo(x + r, y);
+      this.lineTo(x + w - r, y);
+      this.quadraticCurveTo(x + w, y, x + w, y + r);
+      this.lineTo(x + w, y + h - r);
+      this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      this.lineTo(x + r, y + h);
+      this.quadraticCurveTo(x, y + h, x, y + h - r);
+      this.lineTo(x, y + r);
+      this.quadraticCurveTo(x, y, x + r, y);
+      this.closePath();
+    };
+  }
+
+  // ─── Resize ───
+  window.addEventListener('resize', () => {
+    // canvases re-setup each frame, so nothing special needed
+  });
+})();
+</script>
+</body>
+</html>
