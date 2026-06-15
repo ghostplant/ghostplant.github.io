@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的世界 - 网页版</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 开始界面 -->
+  <div id="menu-screen">
+    <div class="menu-container">
+      <h1 class="game-title">我的世界</h1>
+      <p class="subtitle">网页版</p>
+      <button id="start-btn" class="menu-btn">开始游戏</button>
+      <div class="controls-info">
+        <h3>操作说明</h3>
+        <ul>
+          <li><span class="key">W A S D</span> 移动</li>
+          <li><span class="key">空格</span> 跳跃</li>
+          <li><span class="key">鼠标</span> 视角</li>
+          <li><span class="key">左键</span> 破坏方块</li>
+          <li><span class="key">右键</span> 放置方块</li>
+          <li><span class="key">1-9</span> 选择方块</li>
+          <li><span class="key">滚轮</span> 切换方块</li>
+          <li><span class="key">E</span> 切换飞行模式</li>
+          <li><span class="key">Shift</span> 飞行下降</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div id="game-screen" style="display:none;">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- 准星 -->
+    <div id="crosshair">
+      <div class="cross-h"></div>
+      <div class="cross-v"></div>
+    </div>
+
+    <!-- 快捷栏 -->
+    <div id="hotbar">
+      <div class="hotbar-slot selected" data-slot="0">
+        <div class="block-icon grass-icon"></div>
+        <span class="slot-num">1</span>
+      </div>
+      <div class="hotbar-slot" data-slot="1">
+        <div class="block-icon dirt-icon"></div>
+        <span class="slot-num">2</span>
+      </div>
+      <div class="hotbar-slot" data-slot="2">
+        <div class="block-icon stone-icon"></div>
+        <span class="slot-num">3</span>
+      </div>
+      <div class="hotbar-slot" data-slot="3">
+        <div class="block-icon wood-icon"></div>
+        <span class="slot-num">4</span>
+      </div>
+      <div class="hotbar-slot" data-slot="4">
+        <div class="block-icon leaves-icon"></div>
+        <span class="slot-num">5</span>
+      </div>
+      <div class="hotbar-slot" data-slot="5">
+        <div class="block-icon sand-icon"></div>
+        <span class="slot-num">6</span>
+      </div>
+      <div class="hotbar-slot" data-slot="6">
+        <div class="block-icon water-icon"></div>
+        <span class="slot-num">7</span>
+      </div>
+      <div class="hotbar-slot" data-slot="7">
+        <div class="block-icon brick-icon"></div>
+        <span class="slot-num">8</span>
+      </div>
+      <div class="hotbar-slot" data-slot="8">
+        <div class="block-icon snow-icon"></div>
+        <span class="slot-num">9</span>
+      </div>
+    </div>
+
+    <!-- 调试信息 -->
+    <div id="debug-info">
+      <span id="fps-display">FPS: 0</span>
+      <span id="pos-display">位置: 0, 0, 0</span>
+      <span id="mode-display">模式: 生存</span>
+    </div>
+
+    <!-- 提示信息 -->
+    <div id="toast" class="hidden"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="noise.js"></script>
+  <script src="world.js"></script>
+  <script src="player.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
