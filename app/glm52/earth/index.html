@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 地球仪</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>正在加载地球纹理...</p>
+    </div>
+    <div id="info">
+        <h1>3D 地球仪</h1>
+        <p>左键拖动旋转 · 滚轮缩放</p>
+    </div>
+    <div id="controls">
+        <button id="toggle-rotation">暂停自转</button>
+        <button id="toggle-clouds">隐藏云层</button>
+        <button id="toggle-atmosphere">隐藏大气</button>
+        <button id="reset-view">重置视角</button>
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
