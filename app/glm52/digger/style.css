@@ -1,0 +1,154 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0d0d0d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Courier New', Courier, monospace;
+    color: #fff;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    border: 3px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+#hud {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 24px;
+    background: linear-gradient(180deg, #1a1a1a, #222);
+    border-bottom: 2px solid #333;
+    font-size: 20px;
+    font-weight: bold;
+    height: 50px;
+}
+
+.hud-item {
+    color: #ddd;
+    text-shadow: 1px 1px 2px #000;
+}
+
+#score { color: #FFD700; }
+#lives { color: #ff6464; }
+#gold-count { color: #4ad94a; }
+
+#canvas {
+    display: block;
+    background: #1a1a1a;
+}
+
+/* Overlay */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.screen {
+    text-align: center;
+    padding: 40px;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.screen h1 {
+    font-size: 64px;
+    margin-bottom: 8px;
+    letter-spacing: 6px;
+    text-shadow: 3px 3px 0 #555, 0 0 30px rgba(255, 215, 0, 0.3);
+}
+
+.screen h2 {
+    font-size: 24px;
+    margin-bottom: 30px;
+    color: #aaa;
+    letter-spacing: 2px;
+}
+
+.screen h1.red {
+    color: #ff4444;
+    text-shadow: 3px 3px 0 #500, 0 0 30px rgba(255, 0, 0, 0.3);
+}
+
+.screen h1.gold {
+    color: #FFD700;
+    text-shadow: 3px 3px 0 #555, 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.instructions {
+    text-align: left;
+    margin: 20px auto;
+    max-width: 520px;
+    line-height: 2.2;
+    font-size: 17px;
+    color: #ccc;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 24px 32px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.final-text {
+    font-size: 26px;
+    margin: 16px 0;
+    color: #ddd;
+}
+
+.btn {
+    padding: 14px 48px;
+    font-size: 22px;
+    background: linear-gradient(180deg, #4a8a4a, #3a6a3a);
+    color: white;
+    border: 2px solid #5a9a5a;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    margin-top: 16px;
+    transition: all 0.15s;
+    text-shadow: 1px 1px 2px #000;
+    box-shadow: 0 4px 0 #2a4a2a, 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn:hover {
+    background: linear-gradient(180deg, #5a9a5a, #4a7a4a);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #2a4a2a, 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #2a4a2a, 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.hidden {
+    display: none !important;
+}

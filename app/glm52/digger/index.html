@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digger - 挖金矿</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="hud">
+            <div class="hud-item">💰 分数: <span id="score">0</span></div>
+            <div class="hud-item">❤️ 生命: <span id="lives">♥♥♥</span></div>
+            <div class="hud-item">⛏️ 金矿: <span id="gold-count">0/30</span></div>
+        </div>
+        <canvas id="canvas" width="960" height="640"></canvas>
+        <div id="overlay" class="overlay">
+            <div id="menu" class="screen">
+                <h1>DIGGER</h1>
+                <h2>挖金矿</h2>
+                <div class="instructions">
+                    <p>🎯 在广阔的地下收集所有金矿即可获胜</p>
+                    <p>⌨️ 方向键 / WASD 移动并挖掘沙土</p>
+                    <p>📷 摄像机自动跟随主角，探索更大的地图</p>
+                    <p>🗺️ 右上角小地图显示全局位置（白框为当前视野）</p>
+                    <p>👹 红色敌人只能走你挖出的隧道</p>
+                    <p>🟢 绿色变异敌人能穿沙土金矿直冲向你！</p>
+                    <p>💰 挖空金矿下方沙土 → 摇晃数秒 → 坠落砸杀</p>
+                    <p>💀 坠落的金矿可以砸死敌人 —— 也能砸死你自己！</p>
+                </div>
+                <button id="start-btn" class="btn">开始游戏</button>
+            </div>
+            <div id="gameover" class="screen hidden">
+                <h1 class="red">游戏结束</h1>
+                <p class="final-text">最终分数: <span id="final-score">0</span></p>
+                <button id="restart-btn" class="btn">重新开始</button>
+            </div>
+            <div id="win" class="screen hidden">
+                <h1 class="gold">🏆 胜利！</h1>
+                <p class="final-text">最终分数: <span id="win-score">0</span></p>
+                <button id="play-again-btn" class="btn">再玩一次</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

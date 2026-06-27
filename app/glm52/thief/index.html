@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>偷车大盗 - Grand Thief</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a1a; overflow: hidden; font-family: 'Courier New', monospace; }
+#gameCanvas { display: block; cursor: crosshair; }
+
+/* HUD */
+#hud {
+  position: fixed; top: 0; left: 0; width: 100%; pointer-events: none;
+  display: flex; justify-content: space-between; padding: 12px 20px;
+  z-index: 10;
+}
+.hud-panel {
+  background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 8px; padding: 8px 14px; color: #fff; font-size: 14px;
+  display: flex; align-items: center; gap: 16px;
+}
+.hud-item { display: flex; align-items: center; gap: 6px; }
+.hud-label { color: #888; font-size: 11px; text-transform: uppercase; }
+.hud-value { color: #fff; font-size: 18px; font-weight: bold; }
+#healthBar { width: 100px; height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+#healthFill { height: 100%; background: linear-gradient(90deg, #e74c3c, #2ecc71); transition: width 0.3s; }
+.stars { display: flex; gap: 2px; }
+.star { font-size: 18px; color: #333; }
+.star.active { color: #f1c40f; text-shadow: 0 0 6px #f1c40f; }
+
+/* Minimap */
+#minimap {
+  position: fixed; bottom: 12px; right: 12px;
+  border: 2px solid rgba(255,255,255,0.3); border-radius: 6px;
+  z-index: 10;
+}
+
+/* Messages */
+#messageBox {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 20; pointer-events: none;
+}
+.big-message {
+  background: rgba(0,0,0,0.75); border: 2px solid #f39c12; border-radius: 12px;
+  padding: 20px 40px; color: #f39c12; font-size: 28px; font-weight: bold;
+  text-align: center; animation: fadeIn 0.3s;
+}
+.sub-message { color: #ccc; font-size: 14px; margin-top: 8px; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+/* Start screen */
+#startScreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100; color: #fff;
+}
+#startScreen h1 {
+  font-size: 56px; color: #f39c12; text-shadow: 0 0 20px #f39c12, 4px 4px 0 #c0392b;
+  margin-bottom: 10px; letter-spacing: 4px;
+}
+#startScreen h2 { font-size: 18px; color: #888; margin-bottom: 30px; }
+.controls-info {
+  background: rgba(0,0,0,0.5); border: 1px solid #444; border-radius: 10px;
+  padding: 20px 30px; margin-bottom: 30px; font-size: 14px; line-height: 2;
+}
+.controls-info span { color: #f39c12; font-weight: bold; }
+#startBtn {
+  background: #f39c12; color: #000; border: none; padding: 14px 50px;
+  font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer;
+  font-family: 'Courier New', monospace; transition: all 0.2s;
+}
+#startBtn:hover { background: #e67e22; transform: scale(1.05); }
+
+/* Game over */
+#gameOverScreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8); display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100; color: #fff;
+}
+#gameOverScreen h1 { font-size: 48px; color: #e74c3c; margin-bottom: 20px; }
+#gameOverScreen p { font-size: 18px; margin-bottom: 30px; }
+#restartBtn {
+  background: #e74c3c; color: #fff; border: none; padding: 12px 40px;
+  font-size: 18px; border-radius: 8px; cursor: pointer;
+  font-family: 'Courier New', monospace;
+}
+#restartBtn:hover { background: #c0392b; }
+
+/* Mission panel */
+#missionPanel {
+  position: fixed; bottom: 12px; left: 12px;
+  background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 8px; padding: 10px 16px; color: #fff; font-size: 13px;
+  z-index: 10; max-width: 280px;
+}
+#missionTitle { color: #f39c12; font-weight: bold; margin-bottom: 4px; }
+#missionDesc { color: #ccc; font-size: 12px; }
+#missionProgress { color: #2ecc71; font-size: 12px; margin-top: 4px; }
+
+/* Notification */
+#notification {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7); border: 1px solid #f39c12; border-radius: 6px;
+  padding: 8px 20px; color: #f39c12; font-size: 14px; z-index: 15;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+#notification.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-panel">
+    <div class="hud-item">
+      <span class="hud-label">血量</span>
+      <div id="healthBar"><div id="healthFill" style="width:100%"></div></div>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">金钱</span>
+      <span class="hud-value" id="moneyValue" style="color:#2ecc71">$0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">分数</span>
+      <span class="hud-value" id="scoreValue">0</span>
+    </div>
+  </div>
+  <div class="hud-panel">
+    <div class="hud-item">
+      <span class="hud-label">通缉</span>
+      <div class="stars" id="wantedStars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+        <span class="star">★</span><span class="star">★</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mission Panel -->
+<div id="missionPanel">
+  <div id="missionTitle">任务</div>
+  <div id="missionDesc">等待任务...</div>
+  <div id="missionProgress"></div>
+</div>
+
+<!-- Minimap -->
+<canvas id="minimap" width="180" height="180"></canvas>
+
+<!-- Notification -->
+<div id="notification"></div>
+
+<!-- Message Box -->
+<div id="messageBox"></div>
+
+<!-- Start Screen -->
+<div id="startScreen">
+  <h1>偷车大盗</h1>
+  <h2>GRAND THIEF</h2>
+  <div class="controls-info">
+    <div><span>W A S D</span> / <span>方向键</span> — 移动 / 驾驶</div>
+    <div><span>F</span> — 上车 / 下车 (偷车)</div>
+    <div><span>空格</span> — 手刹 / 攻击 (步行时)</div>
+    <div><span>Shift</span> — 加速跑 / 加速驾驶</div>
+    <div><span>鼠标左键</span> — 射击 (步行时)</div>
+  </div>
+  <button id="startBtn">开始游戏</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameOverScreen">
+  <h1>GAME OVER</h1>
+  <p id="gameOverStats">你死了。</p>
+  <button id="restartBtn">重新开始</button>
+</div>
+
+<script>
+// ============================================================
+// 偷车大盗 - Grand Thief
+// 俯视角开放世界游戏
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const miniCanvas = document.getElementById('minimap');
+const miniCtx = miniCanvas.getContext('2d');
+
+let W = window.innerWidth;
+let H = window.innerHeight;
+canvas.width = W;
+canvas.height = H;
+
+window.addEventListener('resize', () => {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+});
+
+// ========== 游戏常量 ==========
+const TILE = 64;
+const MAP_W = 50;
+const MAP_H = 50;
+const MAP_PIX_W = MAP_W * TILE;
+const MAP_PIX_H = MAP_H * TILE;
+
+// 地块类型
+const T_ROAD_H = 1;   // 水平道路
+const T_ROAD_V = 2;   // 垂直道路
+const T_ROAD_X = 3;   // 十字路口
+const T_ROAD_T = 4;   // T字路口
+const T_BUILDING = 5; // 建筑
+const T_GRASS = 6;    // 草地
+const T_SIDEWALK = 7; // 人行道
+const T_WATER = 8;    // 水
+
+// ========== 输入 ==========
+const keys = {};
+const mouse = { x: 0, y: 0, down: false };
+
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  keys[e.code] = true;
+  if (e.key === ' ') e.preventDefault();
+});
+window.addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+  keys[e.code] = false;
+});
+canvas.addEventListener('mousemove', e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+canvas.addEventListener('mousedown', e => { mouse.down = true; });
+canvas.addEventListener('mouseup', e => { mouse.down = false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ========== 工具函数 ==========
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function angleLerp(a, b, t) {
+  let diff = b - a;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return a + diff * t;
+}
+
+// ========== 地图生成 ==========
+let map = [];
+let buildings = [];
+let roadTiles = [];
+
+function generateMap() {
+  map = [];
+  buildings = [];
+  roadTiles = [];
+
+  // 初始化为草地
+  for (let y = 0; y < MAP_H; y++) {
+    map[y] = [];
+    for (let x = 0; x < MAP_W; x++) {
+      map[y][x] = T_GRASS;
+    }
+  }
+
+  // 生成道路网格 (每隔几格一条路)
+  const blockSize = 6;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (x % blockSize === 0 || y % blockSize === 0) {
+        map[y][x] = T_ROAD_H; // 先标记为道路
+      }
+    }
+  }
+
+  // 区分道路类型
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T_ROAD_H) {
+        const isHRoad = y % blockSize === 0;
+        const isVRoad = x % blockSize === 0;
+        if (isHRoad && isVRoad) {
+          map[y][x] = T_ROAD_X;
+        } else if (isHRoad) {
+          map[y][x] = T_ROAD_H;
+        } else {
+          map[y][x] = T_ROAD_V;
+        }
+        roadTiles.push({ x, y });
+      }
+    }
+  }
+
+  // 添加人行道 (道路旁边的格子)
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T_GRASS) {
+        let nearRoad = false;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H) {
+              if ([T_ROAD_H, T_ROAD_V, T_ROAD_X, T_ROAD_T].includes(map[ny][nx])) {
+                nearRoad = true;
+              }
+            }
+          }
+        }
+        if (nearRoad) map[y][x] = T_SIDEWALK;
+      }
+    }
+  }
+
+  // 在街区内生成建筑
+  for (let by = 1; by < MAP_H; by += blockSize) {
+    for (let bx = 1; bx < MAP_W; bx += blockSize) {
+      // 街块内 1,1 到 blockSize-2,blockSize-2
+      const bw = blockSize - 2;
+      const bh = blockSize - 2;
+      if (bw < 2 || bh < 2) continue;
+
+      // 随机决定建筑布局
+      const r = Math.random();
+      if (r < 0.6) {
+        // 一个大建筑
+        const w = randInt(2, bw);
+        const h = randInt(2, bh);
+        const ox = randInt(0, bw - w);
+        const oy = randInt(0, bh - h);
+        const color = ['#555', '#666', '#777', '#4a4a5a', '#5a4a4a', '#4a5a4a'][randInt(0, 5)];
+        buildings.push({
+          x: (bx + ox) * TILE, y: (by + oy) * TILE,
+          w: w * TILE, h: h * TILE, color: color,
+          windows: true
+        });
+        for (let y = by + oy; y < by + oy + h; y++) {
+          for (let x = bx + ox; x < bx + ox + w; x++) {
+            if (y < MAP_H && x < MAP_W) map[y][x] = T_BUILDING;
+          }
+        }
+      } else {
+        // 两个小建筑
+        for (let i = 0; i < 2; i++) {
+          const w = randInt(2, Math.floor(bw / 2));
+          const h = randInt(2, bh);
+          const ox = i === 0 ? 0 : randInt(Math.floor(bw / 2), bw - w);
+          const oy = randInt(0, bh - h);
+          if (ox + w > bw || oy + h > bh) continue;
+          const color = ['#555', '#666', '#777', '#4a4a5a', '#5a4a4a'][randInt(0, 4)];
+          buildings.push({
+            x: (bx + ox) * TILE, y: (by + oy) * TILE,
+            w: w * TILE, h: h * TILE, color: color,
+            windows: true
+          });
+          for (let y = by + oy; y < by + oy + h; y++) {
+            for (let x = bx + ox; x < bx + ox + w; x++) {
+              if (y < MAP_H && x < MAP_W) map[y][x] = T_BUILDING;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 添加一片水域
+  for (let y = MAP_H - 6; y < MAP_H; y++) {
+    for (let x = 0; x < 8; x++) {
+      if (map[y][x] !== T_BUILDING) map[y][x] = T_WATER;
+    }
+  }
+}
+
+// 检查某个像素位置是否可通行
+function isPassable(px, py, radius = 0) {
+  const minX = Math.floor((px - radius) / TILE);
+  const maxX = Math.floor((px + radius) / TILE);
+  const minY = Math.floor((py - radius) / TILE);
+  const maxY = Math.floor((py + radius) / TILE);
+
+  for (let ty = minY; ty <= maxY; ty++) {
+    for (let tx = minX; tx <= maxX; tx++) {
+      if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return false;
+      const t = map[ty][tx];
+      if (t === T_BUILDING || t === T_WATER) return false;
+    }
+  }
+  return true;
+}
+
+// 检查是否在道路上
+function isOnRoad(px, py) {
+  const tx = Math.floor(px / TILE);
+  const ty = Math.floor(py / TILE);
+  if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return false;
+  return [T_ROAD_H, T_ROAD_V, T_ROAD_X, T_ROAD_T].includes(map[ty][tx]);
+}
+
+// ========== 玩家 ==========
+const player = {
+  x: 0, y: 0, angle: 0, speed: 0,
+  health: 100, maxHealth: 100,
+  inCar: null,
+  onFoot: true,
+  radius: 12,
+  walkSpeed: 2.5,
+  runSpeed: 4.5,
+  shootCooldown: 0,
+  money: 0,
+  score: 0,
+  wanted: 0, // 0-5
+  wantedTimer: 0,
+  alive: true,
+  punchCooldown: 0,
+};
+
+// ========== 车辆系统 ==========
+const carColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e67e22', '#1abc9c', '#ecf0f1', '#34495e'];
+let cars = [];
+
+function spawnCar(x, y, angle) {
+  cars.push({
+    x, y, angle: angle || 0,
+    speed: 0, maxSpeed: 6, maxReverse: -2.5,
+    accel: 0.15, brake: 0.3, friction: 0.05,
+    turnSpeed: 0.04,
+    w: 36, h: 64,
+    color: carColors[randInt(0, carColors.length - 1)],
+    health: 100,
+    driver: null, // null = NPC, 'player' = player
+    npcTimer: 0,
+    npcDir: 1,
+    parked: true,
+    id: Math.random(),
+  });
+}
+
+function spawnCarsOnRoad() {
+  cars = [];
+  // 在道路上生成车辆
+  for (let i = 0; i < 40; i++) {
+    const tile = roadTiles[randInt(0, roadTiles.length - 1)];
+    const cx = tile.x * TILE + TILE / 2;
+    const cy = tile.y * TILE + TILE / 2;
+    // 避免太靠近玩家
+    if (dist(cx, cy, player.x, player.y) < 200) continue;
+    const isH = map[tile.y][tile.x] === T_ROAD_H || map[tile.y][tile.x] === T_ROAD_X;
+    const angle = isH ? 0 : Math.PI / 2;
+    // 偏移到车道
+    const offsetX = isH ? 0 : 16;
+    const offsetY = isH ? 16 : 0;
+    spawnCar(cx + offsetX, cy + offsetY, angle);
+  }
+}
+
+// ========== 行人 ==========
+let pedestrians = [];
+const pedColors = ['#e67e22', '#2c3e50', '#8e44ad', '#16a085', '#27ae60', '#d35400', '#7f8c8d', '#c0392b'];
+
+function spawnPedestrian(x, y) {
+  pedestrians.push({
+    x, y, angle: rand(0, Math.PI * 2),
+    speed: rand(0.5, 1.5),
+    color: pedColors[randInt(0, pedColors.length - 1)],
+    health: 30,
+    radius: 10,
+    changeDirTimer: randInt(60, 180),
+    fleeing: false,
+    dead: false,
+    walkCycle: 0,
+  });
+}
+
+function spawnPedestrians() {
+  pedestrians = [];
+  for (let i = 0; i < 60; i++) {
+    // 在人行道上生成
+    let attempts = 0;
+    while (attempts < 20) {
+      const tx = randInt(0, MAP_W - 1);
+      const ty = randInt(0, MAP_H - 1);
+      if (map[ty][tx] === T_SIDEWALK || map[ty][tx] === T_GRASS) {
+        const px = tx * TILE + TILE / 2;
+        const py = ty * TILE + TILE / 2;
+        if (dist(px, py, player.x, player.y) > 150) {
+          spawnPedestrian(px, py);
+          break;
+        }
+      }
+      attempts++;
+    }
+  }
+}
+
+// ========== 警察 ==========
+let police = [];
+
+function spawnPolice(x, y) {
+  police.push({
+    x, y, angle: 0,
+    speed: 2.8,
+    health: 50,
+    radius: 12,
+    shootCooldown: 0,
+    color: '#2c3e50',
+    walkCycle: 0,
+  });
+}
+
+function spawnPoliceNearPlayer() {
+  // 在玩家附近的道路上生成警车/警察
+  for (let i = 0; i < 2; i++) {
+    let attempts = 0;
+    while (attempts < 30) {
+      const angle = rand(0, Math.PI * 2);
+      const d = rand(300, 600);
+      const px = player.x + Math.cos(angle) * d;
+      const py = player.y + Math.sin(angle) * d;
+      if (isOnRoad(px, py) && px > 0 && py > 0 && px < MAP_PIX_W && py < MAP_PIX_H) {
+        spawnPolice(px, py);
+        break;
+      }
+      attempts++;
+    }
+  }
+}
+
+// ========== 子弹 ==========
+let bullets = [];
+
+function shoot(x, y, angle, fromPlayer = true, damage = 20) {
+  bullets.push({
+    x, y, angle,
+    vx: Math.cos(angle) * 10,
+    vy: Math.sin(angle) * 10,
+    life: 60,
+    fromPlayer,
+    damage,
+  });
+}
+
+// ========== 粒子效果 ==========
+let particles = [];
+
+function spawnParticles(x, y, color, count = 10, speed = 3) {
+  for (let i = 0; i < count; i++) {
+    const a = rand(0, Math.PI * 2);
+    const s = rand(0.5, speed);
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      life: randInt(20, 40),
+      maxLife: 40,
+      color,
+      size: rand(2, 5),
+    });
+  }
+}
+
+function spawnExplosion(x, y) {
+  for (let i = 0; i < 30; i++) {
+    const a = rand(0, Math.PI * 2);
+    const s = rand(1, 8);
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      life: randInt(30, 60),
+      maxLife: 60,
+      color: ['#f39c12', '#e74c3c', '#f1c40f', '#e67e22'][randInt(0, 3)],
+      size: rand(3, 8),
+    });
+  }
+}
+
+// ========== 金钱掉落 ==========
+let pickups = [];
+
+function spawnMoneyPickup(x, y, amount = 50) {
+  pickups.push({ x, y, amount, life: 600, bob: 0 });
+}
+
+// ========== 任务系统 ==========
+let currentMission = null;
+let missionTimer = 0;
+
+const missionTypes = [
+  {
+    title: '偷车任务',
+    desc: '偷一辆车并开到指定地点',
+    init: () => {
+      // 找一辆远处的车作为目标
+      if (cars.length === 0) return false;
+      const car = cars[randInt(0, cars.length - 1)];
+      currentMission = {
+        type: 'steal',
+        title: '偷车任务',
+        desc: '找到标记的车辆并偷走它',
+        targetCar: car.id,
+        phase: 'find',
+        destX: 0, destY: 0,
+        progress: '',
+      };
+      return true;
+    }
+  },
+  {
+    title: '逃脱追捕',
+    desc: '在通缉等级下存活60秒',
+    init: () => {
+      player.wanted = Math.max(2, player.wanted);
+      currentMission = {
+        type: 'escape',
+        title: '逃脱追捕',
+        desc: '躲避警察60秒',
+        timer: 3600, // 60秒
+        progress: '',
+      };
+      return true;
+    }
+  },
+  {
+    title: '送货任务',
+    desc: '驾驶车辆到达指定地点',
+    init: () => {
+      // 随机目的地
+      let attempts = 0;
+      while (attempts < 30) {
+        const tile = roadTiles[randInt(0, roadTiles.length - 1)];
+        const dx = tile.x * TILE + TILE / 2;
+        const dy = tile.y * TILE + TILE / 2;
+        if (dist(dx, dy, player.x, player.y) > 800) {
+          currentMission = {
+            type: 'deliver',
+            title: '送货任务',
+            desc: '驾驶车辆到达标记地点',
+            destX: dx, destY: dy,
+            progress: '',
+          };
+          return true;
+        }
+        attempts++;
+      }
+      return false;
+    }
+  },
+];
+
+function startNewMission() {
+  // 随机选一个任务
+  const m = missionTypes[randInt(0, missionTypes.length - 1)];
+  if (m.init()) {
+    showNotification('新任务: ' + currentMission.title);
+    updateMissionPanel();
+  }
+}
+
+function updateMission() {
+  if (!currentMission) {
+    missionTimer++;
+    if (missionTimer > 300) { // 5秒后新任务
+      startNewMission();
+      missionTimer = 0;
+    }
+    return;
+  }
+
+  switch (currentMission.type) {
+    case 'steal':
+      if (currentMission.phase === 'find') {
+        const car = cars.find(c => c.id === currentMission.targetCar);
+        if (!car) { currentMission = null; return; }
+        if (player.inCar === car) {
+          // 找到目的地
+          let attempts = 0;
+          while (attempts < 30) {
+            const tile = roadTiles[randInt(0, roadTiles.length - 1)];
+            currentMission.destX = tile.x * TILE + TILE / 2;
+            currentMission.destY = tile.y * TILE + TILE / 2;
+            if (dist(currentMission.destX, currentMission.destY, player.x, player.y) > 600) break;
+            attempts++;
+          }
+          currentMission.phase = 'deliver';
+          currentMission.desc = '将车开到标记地点';
+          showNotification('开车到目的地！');
+        }
+        currentMission.progress = '';
+      } else if (currentMission.phase === 'deliver') {
+        if (dist(player.x, player.y, currentMission.destX, currentMission.destY) < 50) {
+          player.money += 500;
+          player.score += 200;
+          showNotification('任务完成！+$500');
+          currentMission = null;
+          missionTimer = 0;
+        }
+        currentMission.progress = '距离: ' + Math.floor(dist(player.x, player.y, currentMission.destX, currentMission.destY)) + 'm';
+      }
+      break;
+
+    case 'escape':
+      currentMission.timer--;
+      currentMission.progress = '剩余: ' + Math.ceil(currentMission.timer / 60) + '秒';
+      if (currentMission.timer <= 0) {
+        player.money += 800;
+        player.score += 400;
+        player.wanted = 0;
+        showNotification('逃脱成功！+$800');
+        currentMission = null;
+        missionTimer = 0;
+      }
+      break;
+
+    case 'deliver':
+      if (player.inCar) {
+        currentMission.progress = '距离: ' + Math.floor(dist(player.x, player.y, currentMission.destX, currentMission.destY)) + 'm';
+        if (dist(player.x, player.y, currentMission.destX, currentMission.destY) < 50) {
+          player.money += 600;
+          player.score += 300;
+          showNotification('送货完成！+$600');
+          currentMission = null;
+          missionTimer = 0;
+        }
+      } else {
+        currentMission.progress = '需要驾驶车辆！';
+      }
+      break;
+  }
+
+  updateMissionPanel();
+}
+
+function updateMissionPanel() {
+  const titleEl = document.getElementById('missionTitle');
+  const descEl = document.getElementById('missionDesc');
+  const progEl = document.getElementById('missionProgress');
+  if (currentMission) {
+    titleEl.textContent = '▶ ' + currentMission.title;
+    descEl.textContent = currentMission.desc;
+    progEl.textContent = currentMission.progress || '';
+  } else {
+    titleEl.textContent = '任务';
+    descEl.textContent = '等待新任务...';
+    progEl.textContent = '';
+  }
+}
+
+// ========== 通知 ==========
+let notifTimer = 0;
+function showNotification(text) {
+  const el = document.getElementById('notification');
+  el.textContent = text;
+  el.classList.add('show');
+  notifTimer = 180;
+}
+
+// ========== 摄像机 ==========
+const camera = { x: 0, y: 0, shake: 0 };
+
+function updateCamera() {
+  let targetX = player.x - W / 2;
+  let targetY = player.y - H / 2;
+  camera.x = lerp(camera.x, targetX, 0.1);
+  camera.y = lerp(camera.y, targetY, 0.1);
+  camera.x = clamp(camera.x, 0, MAP_PIX_W - W);
+  camera.y = clamp(camera.y, 0, MAP_PIX_H - H);
+  if (camera.shake > 0) camera.shake *= 0.9;
+}
+
+// ========== 音效 (Web Audio API) ==========
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+}
+function playSound(freq, duration, type = 'square', vol = 0.1) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+function playNoise(duration, vol = 0.1) {
+  if (!audioCtx) return;
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  noise.connect(gain);
+  gain.connect(audioCtx.destination);
+  noise.start();
+}
+
+// ========== 通缉系统 ==========
+function increaseWanted(amount = 1) {
+  player.wanted = Math.min(5, player.wanted + amount);
+  player.wantedTimer = 0;
+  if (amount > 0) {
+    showNotification('通缉等级 ' + player.wanted + ' ★');
+  }
+}
+
+function updateWanted() {
+  if (player.wanted > 0) {
+    player.wantedTimer++;
+    // 不犯罪一段时间后通缉下降
+    const decayTime = 600 + player.wanted * 300; // 等级越高越难消除
+    if (player.wantedTimer > decayTime) {
+      player.wanted--;
+      player.wantedTimer = 0;
+      if (player.wanted > 0) showNotification('通缉等级下降至 ' + player.wanted + ' ★');
+    }
+
+    // 根据通缉等级生成警察
+    const maxPolice = player.wanted * 2;
+    if (police.length < maxPolice && Math.random() < 0.02 + player.wanted * 0.01) {
+      spawnPoliceNearPlayer();
+    }
+  } else {
+    // 没有通缉时警察逐渐消失
+    if (police.length > 0 && Math.random() < 0.01) {
+      police.pop();
+    }
+  }
+}
+
+// ========== 碰撞检测 ==========
+function circleRectCollide(cx, cy, cr, rx, ry, rw, rh) {
+  const closestX = clamp(cx, rx, rx + rw);
+  const closestY = clamp(cy, ry, ry + rh);
+  return dist(cx, cy, closestX, closestY) < cr;
+}
+
+function resolveBuildingCollision(entity, radius) {
+  for (const b of buildings) {
+    if (circleRectCollide(entity.x, entity.y, radius, b.x, b.y, b.w, b.h)) {
+      // 推开
+      const closestX = clamp(entity.x, b.x, b.x + b.w);
+      const closestY = clamp(entity.y, b.y, b.y + b.h);
+      const dx = entity.x - closestX;
+      const dy = entity.y - closestY;
+      const d = Math.hypot(dx, dy);
+      if (d === 0) {
+        entity.x += radius;
+      } else {
+        entity.x = closestX + (dx / d) * radius;
+        entity.y = closestY + (dy / d) * radius;
+      }
+    }
+  }
+  // 地图边界
+  entity.x = clamp(entity.x, radius, MAP_PIX_W - radius);
+  entity.y = clamp(entity.y, radius, MAP_PIX_H - radius);
+}
+
+// ========== 更新玩家 ==========
+function updatePlayer() {
+  if (!player.alive) return;
+
+  if (player.inCar) {
+    updateDriving();
+  } else {
+    updateOnFoot();
+  }
+
+  // 射击冷却
+  if (player.shootCooldown > 0) player.shootCooldown--;
+  if (player.punchCooldown > 0) player.punchCooldown--;
+
+  // 通缉计时
+  updateWanted();
+}
+
+function updateOnFoot() {
+  let dx = 0, dy = 0;
+  if (keys['w'] || keys['arrowup']) dy -= 1;
+  if (keys['s'] || keys['arrowdown']) dy += 1;
+  if (keys['a'] || keys['arrowleft']) dx -= 1;
+  if (keys['d'] || keys['arrowright']) dx += 1;
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.hypot(dx, dy);
+    dx /= len; dy /= len;
+    const running = keys['shift'];
+    const speed = running ? player.runSpeed : player.walkSpeed;
+    const newX = player.x + dx * speed;
+    const newY = player.y + dy * speed;
+
+    if (isPassable(newX, player.y, player.radius)) player.x = newX;
+    if (isPassable(player.x, newY, player.radius)) player.y = newY;
+
+    player.angle = Math.atan2(dy, dx);
+  }
+
+  resolveBuildingCollision(player, player.radius);
+
+  // 攻击 - 空格拳击
+  if (keys[' '] && player.punchCooldown <= 0) {
+    player.punchCooldown = 25;
+    playSound(200, 0.05, 'square', 0.05);
+    // 检查附近的行人
+    const ax = player.x + Math.cos(player.angle) * 25;
+    const ay = player.y + Math.sin(player.angle) * 25;
+    for (const ped of pedestrians) {
+      if (!ped.dead && dist(ax, ay, ped.x, ped.y) < 25) {
+        ped.health -= 15;
+        ped.fleeing = true;
+        spawnParticles(ped.x, ped.y, '#e74c3c', 5, 2);
+        if (ped.health <= 0) {
+          ped.dead = true;
+          player.score += 10;
+          spawnMoneyPickup(ped.x, ped.y, randInt(20, 80));
+          if (player.wanted < 3) increaseWanted(1);
+        }
+      }
+    }
+    // 检查附近的警察
+    for (const cop of police) {
+      if (dist(ax, ay, cop.x, cop.y) < 25) {
+        cop.health -= 15;
+        spawnParticles(cop.x, cop.y, '#e74c3c', 5, 2);
+        if (cop.health <= 0) {
+          cop.dead = true;
+          player.score += 50;
+          spawnMoneyPickup(cop.x, cop.y, randInt(100, 200));
+          increaseWanted(1);
+        }
+      }
+    }
+  }
+
+  // 鼠标射击
+  if (mouse.down && player.shootCooldown <= 0) {
+    player.shootCooldown = 15;
+    const worldMx = mouse.x + camera.x;
+    const worldMy = mouse.y + camera.y;
+    const angle = Math.atan2(worldMy - player.y, worldMx - player.x);
+    shoot(player.x + Math.cos(angle) * 15, player.y + Math.sin(angle) * 15, angle, true, 25);
+    playSound(800, 0.05, 'square', 0.08);
+    camera.shake = 3;
+    if (player.wanted < 1) increaseWanted(1);
+  }
+
+  // 检查上车
+  if (keys['f']) {
+    keys['f'] = false; // 防止重复触发
+    let nearestCar = null;
+    let nearestDist = 50;
+    for (const car of cars) {
+      const d = dist(player.x, player.y, car.x, car.y);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestCar = car;
+      }
+    }
+    if (nearestCar) {
+      player.inCar = nearestCar;
+      player.onFoot = false;
+      if (!nearestCar.parked) {
+        // 偷车！
+        increaseWanted(1);
+        showNotification('偷车成功！');
+        playSound(400, 0.1, 'sine', 0.1);
+      }
+      nearestCar.driver = 'player';
+      nearestCar.parked = false;
+    }
+  }
+
+  // 拾取金钱
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const p = pickups[i];
+    if (dist(player.x, player.y, p.x, p.y) < 25) {
+      player.money += p.amount;
+      pickups.splice(i, 1);
+      playSound(1000, 0.08, 'sine', 0.08);
+    }
+  }
+}
+
+function updateDriving() {
+  const car = player.inCar;
+  let throttle = 0;
+  let steering = 0;
+
+  if (keys['w'] || keys['arrowup']) throttle = 1;
+  if (keys['s'] || keys['arrowdown']) throttle = -1;
+  if (keys['a'] || keys['arrowleft']) steering = -1;
+  if (keys['d'] || keys['arrowright']) steering = 1;
+
+  const boost = keys['shift'] ? 1.5 : 1;
+
+  // 加速/减速
+  if (throttle > 0) {
+    car.speed += car.accel * throttle * boost;
+  } else if (throttle < 0) {
+    if (car.speed > 0) {
+      car.speed += car.brake * throttle; // 刹车
+    } else {
+      car.speed += car.accel * throttle;
+    }
+  } else {
+    // 摩擦
+    if (Math.abs(car.speed) < car.friction) car.speed = 0;
+    else car.speed -= Math.sign(car.speed) * car.friction;
+  }
+
+  // 手刹
+  if (keys[' ']) {
+    car.speed *= 0.85;
+  }
+
+  car.speed = clamp(car.speed, car.maxReverse, car.maxSpeed * boost);
+
+  // 转向 (速度越快转向越灵敏，但不能太快时转向)
+  const speedFactor = Math.min(1, Math.abs(car.speed) / 2);
+  car.angle += steering * car.turnSpeed * speedFactor * Math.sign(car.speed);
+
+  // 移动
+  const newX = car.x + Math.cos(car.angle) * car.speed;
+  const newY = car.y + Math.sin(car.angle) * car.speed;
+
+  // 碰撞检测
+  if (isPassable(newX, car.y, 20)) {
+    car.x = newX;
+  } else {
+    car.speed *= -0.3; // 撞墙反弹
+    if (Math.abs(car.speed) > 2) {
+      car.health -= Math.abs(car.speed) * 2;
+      camera.shake = 5;
+      playSound(150, 0.1, 'sawtooth', 0.1);
+    }
+  }
+  if (isPassable(car.x, newY, 20)) {
+    car.y = newY;
+  } else {
+    car.speed *= -0.3;
+    if (Math.abs(car.speed) > 2) {
+      car.health -= Math.abs(car.speed) * 2;
+      camera.shake = 5;
+      playSound(150, 0.1, 'sawtooth', 0.1);
+    }
+  }
+
+  resolveBuildingCollision(car, 20);
+
+  // 玩家跟随车
+  player.x = car.x;
+  player.y = car.y;
+  player.angle = car.angle;
+
+  // 撞行人
+  for (const ped of pedestrians) {
+    if (!ped.dead && dist(car.x, car.y, ped.x, ped.y) < 30 && Math.abs(car.speed) > 1) {
+      ped.health -= 50;
+      ped.fleeing = true;
+      spawnParticles(ped.x, ped.y, '#e74c3c', 10, 4);
+      if (ped.health <= 0) {
+        ped.dead = true;
+        player.score += 15;
+        spawnMoneyPickup(ped.x, ped.y, randInt(20, 80));
+        if (player.wanted < 4) increaseWanted(1);
+      }
+      car.health -= 5;
+    }
+  }
+
+  // 撞警察
+  for (const cop of police) {
+    if (!cop.dead && dist(car.x, car.y, cop.x, cop.y) < 30 && Math.abs(car.speed) > 2) {
+      cop.health -= 30;
+      spawnParticles(cop.x, cop.y, '#e74c3c', 8, 3);
+      if (cop.health <= 0) {
+        cop.dead = true;
+        player.score += 50;
+        spawnMoneyPickup(cop.x, cop.y, randInt(100, 200));
+        increaseWanted(1);
+      }
+    }
+  }
+
+  // 车辆爆炸
+  if (car.health <= 0) {
+    spawnExplosion(car.x, car.y);
+    playNoise(0.5, 0.2);
+    camera.shake = 15;
+    if (player.inCar === car) {
+      player.health -= 30;
+      player.inCar = null;
+      player.onFoot = true;
+    }
+    cars = cars.filter(c => c !== car);
+    // 附近的人也受伤
+    for (const ped of pedestrians) {
+      if (!ped.dead && dist(car.x, car.y, ped.x, ped.y) < 80) {
+        ped.health = 0;
+        ped.dead = true;
+      }
+    }
+  }
+
+  // 下车
+  if (keys['f']) {
+    keys['f'] = false;
+    // 在车旁边下车
+    const exitX = car.x + Math.cos(car.angle + Math.PI / 2) * 30;
+    const exitY = car.y + Math.sin(car.angle + Math.PI / 2) * 30;
+    if (isPassable(exitX, exitY, player.radius)) {
+      player.x = exitX;
+      player.y = exitY;
+    } else {
+      const exitX2 = car.x + Math.cos(car.angle - Math.PI / 2) * 30;
+      const exitY2 = car.y + Math.sin(car.angle - Math.PI / 2) * 30;
+      if (isPassable(exitX2, exitY2, player.radius)) {
+        player.x = exitX2;
+        player.y = exitY2;
+      } else {
+        player.x = car.x;
+        player.y = car.y;
+      }
+    }
+    player.inCar = null;
+    player.onFoot = true;
+    car.driver = null;
+    car.speed = 0;
+  }
+}
+
+// ========== 更新车辆 (NPC) ==========
+function updateCars() {
+  for (const car of cars) {
+    if (car.driver === 'player') continue;
+
+    // 停放的车不动
+    if (car.parked) continue;
+
+    // NPC 驾驶 (简单AI: 沿道路行驶)
+    car.npcTimer++;
+    if (car.npcTimer > 120) {
+      car.npcTimer = 0;
+      car.npcDir = Math.random() < 0.3 ? -car.npcDir : car.npcDir;
+    }
+
+    car.speed = lerp(car.speed, 2 * car.npcDir, 0.05);
+    car.angle += rand(-0.02, 0.02);
+
+    const newX = car.x + Math.cos(car.angle) * car.speed;
+    const newY = car.y + Math.sin(car.angle) * car.speed;
+
+    if (isPassable(newX, newY, 20)) {
+      car.x = newX;
+      car.y = newY;
+    } else {
+      car.angle += 0.3; // 转向
+      car.speed *= 0.5;
+    }
+  }
+}
+
+// ========== 更新行人 ==========
+function updatePedestrians() {
+  for (let i = pedestrians.length - 1; i >= 0; i--) {
+    const ped = pedestrians[i];
+    if (ped.dead) {
+      // 尸体停留一段时间后消失
+      ped.deadTimer = (ped.deadTimer || 0) + 1;
+      if (ped.deadTimer > 600) pedestrians.splice(i, 1);
+      continue;
+    }
+
+    ped.changeDirTimer--;
+    if (ped.changeDirTimer <= 0) {
+      ped.angle = rand(0, Math.PI * 2);
+      ped.changeDirTimer = randInt(60, 200);
+    }
+
+    // 如果玩家有通缉且靠近，逃跑
+    if (player.wanted > 0 && dist(ped.x, ped.y, player.x, player.y) < 200) {
+      ped.fleeing = true;
+    }
+
+    let speed = ped.speed;
+    if (ped.fleeing) {
+      const fleeAngle = Math.atan2(ped.y - player.y, ped.x - player.x);
+      ped.angle = fleeAngle;
+      speed = 2.5;
+      if (dist(ped.x, ped.y, player.x, player.y) > 400) {
+        ped.fleeing = false;
+      }
+    }
+
+    const newX = ped.x + Math.cos(ped.angle) * speed;
+    const newY = ped.y + Math.sin(ped.angle) * speed;
+
+    if (isPassable(newX, newY, ped.radius)) {
+      ped.x = newX;
+      ped.y = newY;
+    } else {
+      ped.angle += Math.PI / 2;
+    }
+
+    ped.walkCycle += speed * 0.1;
+  }
+}
+
+// ========== 更新警察 ==========
+function updatePolice() {
+  for (let i = police.length - 1; i >= 0; i--) {
+    const cop = police[i];
+    if (cop.dead) {
+      cop.deadTimer = (cop.deadTimer || 0) + 1;
+      if (cop.deadTimer > 600) police.splice(i, 1);
+      continue;
+    }
+
+    // 追击玩家
+    const dx = player.x - cop.x;
+    const dy = player.y - cop.y;
+    const d = Math.hypot(dx, dy);
+    cop.angle = Math.atan2(dy, dx);
+
+    if (d > 30) {
+      const newX = cop.x + (dx / d) * cop.speed;
+      const newY = cop.y + (dy / d) * cop.speed;
+      if (isPassable(newX, cop.y, cop.radius)) cop.x = newX;
+      if (isPassable(cop.x, newY, cop.radius)) cop.y = newY;
+      resolveBuildingCollision(cop, cop.radius);
+    }
+
+    cop.walkCycle += cop.speed * 0.1;
+
+    // 射击
+    cop.shootCooldown--;
+    if (d < 300 && cop.shootCooldown <= 0 && player.wanted > 0) {
+      cop.shootCooldown = randInt(60, 120);
+      const angle = cop.angle + rand(-0.1, 0.1);
+      shoot(cop.x, cop.y, angle, false, 10);
+      playSound(600, 0.04, 'square', 0.04);
+    }
+
+    // 如果玩家没通缉了，警察离开
+    if (player.wanted === 0 && d > 500) {
+      police.splice(i, 1);
+    }
+  }
+}
+
+// ========== 更新子弹 ==========
+function updateBullets() {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life--;
+
+    // 碰撞建筑
+    const tx = Math.floor(b.x / TILE);
+    const ty = Math.floor(b.y / TILE);
+    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H || map[ty][tx] === T_BUILDING) {
+      spawnParticles(b.x, b.y, '#fff', 3, 1);
+      bullets.splice(i, 1);
+      continue;
+    }
+
+    if (b.fromPlayer) {
+      // 击中行人
+      for (const ped of pedestrians) {
+        if (!ped.dead && dist(b.x, b.y, ped.x, ped.y) < 12) {
+          ped.health -= b.damage;
+          ped.fleeing = true;
+          spawnParticles(b.x, b.y, '#e74c3c', 5, 2);
+          if (ped.health <= 0) {
+            ped.dead = true;
+            player.score += 15;
+            spawnMoneyPickup(ped.x, ped.y, randInt(20, 80));
+            if (player.wanted < 3) increaseWanted(1);
+          }
+          bullets.splice(i, 1);
+          break;
+        }
+      }
+      // 击中警察
+      for (const cop of police) {
+        if (!cop.dead && dist(b.x, b.y, cop.x, cop.y) < 12) {
+          cop.health -= b.damage;
+          spawnParticles(b.x, b.y, '#e74c3c', 5, 2);
+          if (cop.health <= 0) {
+            cop.dead = true;
+            player.score += 50;
+            spawnMoneyPickup(cop.x, cop.y, randInt(100, 200));
+            increaseWanted(1);
+          }
+          bullets.splice(i, 1);
+          break;
+        }
+      }
+    } else {
+      // 警察的子弹击中玩家
+      if (player.alive && dist(b.x, b.y, player.x, player.y) < player.radius) {
+        if (player.inCar) {
+          player.inCar.health -= b.damage;
+          spawnParticles(b.x, b.y, '#f39c12', 3, 1);
+        } else {
+          player.health -= b.damage;
+          spawnParticles(b.x, b.y, '#e74c3c', 5, 2);
+          camera.shake = 5;
+        }
+        bullets.splice(i, 1);
+      }
+    }
+
+    if (b.life <= 0) bullets.splice(i, 1);
+  }
+}
+
+// ========== 更新粒子 ==========
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ========== 更新拾取物 ==========
+function updatePickups() {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const p = pickups[i];
+    p.bob += 0.1;
+    p.life--;
+    if (p.life <= 0) pickups.splice(i, 1);
+  }
+}
+
+// ========== 渲染 ==========
+function render() {
+  // 摄像机抖动
+  const shakeX = camera.shake > 0.5 ? rand(-camera.shake, camera.shake) : 0;
+  const shakeY = camera.shake > 0.5 ? rand(-camera.shake, camera.shake) : 0;
+
+  ctx.save();
+  ctx.translate(-camera.x + shakeX, -camera.y + shakeY);
+
+  // 渲染地图
+  renderMap();
+
+  // 渲染拾取物
+  for (const p of pickups) {
+    ctx.save();
+    ctx.translate(p.x, p.y + Math.sin(p.bob) * 3);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(-8, -5, 16, 10);
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(-8, -5, 16, 2);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('$', 0, 3);
+    ctx.restore();
+  }
+
+  // 渲染车辆
+  for (const car of cars) {
+    renderCar(car);
+  }
+
+  // 渲染行人
+  for (const ped of pedestrians) {
+    renderPedestrian(ped);
+  }
+
+  // 渲染警察
+  for (const cop of police) {
+    renderPolice(cop);
+  }
+
+  // 渲染玩家 (步行时)
+  if (!player.inCar && player.alive) {
+    renderPlayer();
+  }
+
+  // 渲染子弹
+  for (const b of bullets) {
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.angle);
+    ctx.fillStyle = b.fromPlayer ? '#f1c40f' : '#e74c3c';
+    ctx.fillRect(-2, -1, 8, 2);
+    ctx.restore();
+  }
+
+  // 渲染粒子
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+
+  // 渲染任务标记
+  renderMissionMarker();
+
+  ctx.restore();
+
+  // 渲染小地图
+  renderMinimap();
+}
+
+function renderMap() {
+  const startX = Math.max(0, Math.floor(camera.x / TILE));
+  const endX = Math.min(MAP_W, Math.ceil((camera.x + W) / TILE));
+  const startY = Math.max(0, Math.floor(camera.y / TILE));
+  const endY = Math.min(MAP_H, Math.ceil((camera.y + H) / TILE));
+
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const t = map[y][x];
+      const px = x * TILE;
+      const py = y * TILE;
+
+      switch (t) {
+        case T_GRASS:
+          ctx.fillStyle = '#2d5016';
+          ctx.fillRect(px, py, TILE, TILE);
+          // 草纹理
+          if ((x + y) % 3 === 0) {
+            ctx.fillStyle = '#3a6b1f';
+            ctx.fillRect(px + 10, py + 10, 4, 4);
+            ctx.fillRect(px + 40, py + 30, 4, 4);
+          }
+          break;
+
+        case T_ROAD_H:
+        case T_ROAD_V:
+        case T_ROAD_X:
+        case T_ROAD_T:
+          ctx.fillStyle = '#3a3a3a';
+          ctx.fillRect(px, py, TILE, TILE);
+          // 道路标线
+          ctx.strokeStyle = '#f5f5f5';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([12, 8]);
+          if (t === T_ROAD_H) {
+            ctx.beginPath();
+            ctx.moveTo(px, py + TILE / 2);
+            ctx.lineTo(px + TILE, py + TILE / 2);
+            ctx.stroke();
+          } else if (t === T_ROAD_V) {
+            ctx.beginPath();
+            ctx.moveTo(px + TILE / 2, py);
+            ctx.lineTo(px + TILE / 2, py + TILE);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+          break;
+
+        case T_SIDEWALK:
+          ctx.fillStyle = '#888';
+          ctx.fillRect(px, py, TILE, TILE);
+          ctx.strokeStyle = '#777';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px, py, TILE, TILE);
+          break;
+
+        case T_WATER:
+          ctx.fillStyle = '#1a5276';
+          ctx.fillRect(px, py, TILE, TILE);
+          // 水波纹
+          ctx.strokeStyle = '#2471a3';
+          ctx.lineWidth = 1;
+          const wave = Math.sin(Date.now() / 500 + x + y) * 3;
+          ctx.beginPath();
+          ctx.moveTo(px + 5, py + TILE / 2 + wave);
+          ctx.lineTo(px + TILE - 5, py + TILE / 2 + wave);
+          ctx.stroke();
+          break;
+      }
+    }
+  }
+
+  // 渲染建筑
+  for (const b of buildings) {
+    // 只渲染可见的
+    if (b.x + b.w < camera.x || b.x > camera.x + W) continue;
+    if (b.y + b.h < camera.y || b.y > camera.y + H) continue;
+
+    // 建筑阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(b.x + 4, b.y + 4, b.w, b.h);
+
+    // 建筑主体
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // 建筑边框
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+    // 窗户
+    if (b.windows) {
+      ctx.fillStyle = 'rgba(255,255,200,0.3)';
+      const winSize = 12;
+      const winSpacing = 24;
+      for (let wy = b.y + 8; wy < b.y + b.h - 8; wy += winSpacing) {
+        for (let wx = b.x + 8; wx < b.x + b.w - 8; wx += winSpacing) {
+          if (Math.random() > 0.3) {
+            ctx.fillRect(wx, wy, winSize, winSize);
+          }
+        }
+      }
+    }
+  }
+}
+
+function renderCar(car) {
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  ctx.rotate(car.angle + Math.PI / 2); // 车头朝上
+
+  // 车阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(-car.w / 2 + 3, -car.h / 2 + 3, car.w, car.h);
+
+  // 车身
+  ctx.fillStyle = car.color;
+  ctx.fillRect(-car.w / 2, -car.h / 2, car.w, car.h);
+
+  // 车顶
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(-car.w / 2 + 4, -car.h / 2 + 12, car.w - 8, car.h - 24);
+
+  // 挡风玻璃
+  ctx.fillStyle = 'rgba(100,200,255,0.4)';
+  ctx.fillRect(-car.w / 2 + 5, -car.h / 2 + 8, car.w - 10, 6);
+  ctx.fillRect(-car.w / 2 + 5, car.h / 2 - 14, car.w - 10, 6);
+
+  // 车头灯
+  ctx.fillStyle = '#fff8dc';
+  ctx.fillRect(-car.w / 2 + 2, -car.h / 2, 5, 3);
+  ctx.fillRect(car.w / 2 - 7, -car.h / 2, 5, 3);
+
+  // 尾灯
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(-car.w / 2 + 2, car.h / 2 - 3, 5, 3);
+  ctx.fillRect(car.w / 2 - 7, car.h / 2 - 3, 5, 3);
+
+  // 车边框
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-car.w / 2, -car.h / 2, car.w, car.h);
+
+  // 目标车辆标记
+  if (currentMission && currentMission.type === 'steal' && currentMission.targetCar === car.id) {
+    ctx.strokeStyle = '#f1c40f';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(-car.w / 2 - 4, -car.h / 2 - 4, car.w + 8, car.h + 8);
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore();
+}
+
+function renderPlayer() {
+  ctx.save();
+  ctx.translate(player.x, player.y);
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(2, 2, player.radius, player.radius * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.rotate(player.angle + Math.PI / 2);
+
+  // 身体
+  ctx.fillStyle = '#2c3e50';
+  ctx.beginPath();
+  ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 头
+  ctx.fillStyle = '#f1c40f';
+  ctx.beginPath();
+  ctx.arc(0, -3, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 方向指示
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(-2, -player.radius, 4, 4);
+
+  // 武器 (如果有通缉)
+  if (player.wanted > 0 || mouse.down) {
+    ctx.fillStyle = '#555';
+    ctx.fillRect(8, -4, 10, 3);
+  }
+
+  ctx.restore();
+}
+
+function renderPedestrian(ped) {
+  ctx.save();
+  ctx.translate(ped.x, ped.y);
+
+  if (ped.dead) {
+    // 尸体
+    ctx.fillStyle = 'rgba(120,0,0,0.6)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = ped.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(2, 2, ped.radius, ped.radius * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.rotate(ped.angle + Math.PI / 2);
+
+  // 走路动画
+  const bob = Math.sin(ped.walkCycle) * 2;
+
+  // 身体
+  ctx.fillStyle = ped.color;
+  ctx.beginPath();
+  ctx.arc(0, bob, ped.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 头
+  ctx.fillStyle = '#f5d4a0';
+  ctx.beginPath();
+  ctx.arc(0, bob - 3, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function renderPolice(cop) {
+  ctx.save();
+  ctx.translate(cop.x, cop.y);
+
+  if (cop.dead) {
+    ctx.fillStyle = 'rgba(0,0,80,0.6)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = cop.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(2, 2, cop.radius, cop.radius * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.rotate(cop.angle + Math.PI / 2);
+
+  const bob = Math.sin(cop.walkCycle) * 2;
+
+  // 身体 (警察制服)
+  ctx.fillStyle = '#2c3e50';
+  ctx.beginPath();
+  ctx.arc(0, bob, cop.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 警徽
+  ctx.fillStyle = '#f1c40f';
+  ctx.beginPath();
+  ctx.arc(0, bob - 2, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 头
+  ctx.fillStyle = '#f5d4a0';
+  ctx.beginPath();
+  ctx.arc(0, bob - 4, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 警帽
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(-6, bob - 8, 12, 4);
+
+  ctx.restore();
+}
+
+function renderMissionMarker() {
+  if (!currentMission) return;
+
+  let mx = 0, my = 0;
+  let showMarker = false;
+
+  if (currentMission.type === 'steal' && currentMission.phase === 'find') {
+    const car = cars.find(c => c.id === currentMission.targetCar);
+    if (car) { mx = car.x; my = car.y; showMarker = true; }
+  } else if (currentMission.type === 'deliver' || (currentMission.type === 'steal' && currentMission.phase === 'deliver')) {
+    mx = currentMission.destX;
+    my = currentMission.destY;
+    showMarker = true;
+  }
+
+  if (showMarker) {
+    const time = Date.now() / 300;
+    const pulse = Math.sin(time) * 0.3 + 0.7;
+    ctx.strokeStyle = `rgba(241, 196, 15, ${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(mx, my, 30 + Math.sin(time) * 5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 箭头指示
+    const dx = mx - player.x;
+    const dy = my - player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 200) {
+      const angle = Math.atan2(dy, dx);
+      const arrowDist = 100;
+      const ax = player.x + Math.cos(angle) * arrowDist;
+      const ay = player.y + Math.sin(angle) * arrowDist;
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#f1c40f';
+      ctx.beginPath();
+      ctx.moveTo(15, 0);
+      ctx.lineTo(-10, -10);
+      ctx.lineTo(-10, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// ========== 小地图 ==========
+function renderMinimap() {
+  miniCtx.fillStyle = '#1a1a1a';
+  miniCtx.fillRect(0, 0, 180, 180);
+
+  const scale = 180 / (MAP_PIX_W);
+  const offsetX = 0;
+  const offsetY = 0;
+
+  // 渲染地图概览
+  const cellSize = TILE * scale;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const t = map[y][x];
+      let color = '#2d5016';
+      if ([T_ROAD_H, T_ROAD_V, T_ROAD_X, T_ROAD_T].includes(t)) color = '#555';
+      else if (t === T_BUILDING) color = '#444';
+      else if (t === T_SIDEWALK) color = '#666';
+      else if (t === T_WATER) color = '#1a5276';
+      miniCtx.fillStyle = color;
+      miniCtx.fillRect(x * cellSize, y * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+    }
+  }
+
+  // 渲染车辆
+  miniCtx.fillStyle = '#e74c3c';
+  for (const car of cars) {
+    miniCtx.fillRect(car.x * scale - 1, car.y * scale - 1, 2, 2);
+  }
+
+  // 渲染警察
+  miniCtx.fillStyle = '#3498db';
+  for (const cop of police) {
+    if (!cop.dead) {
+      miniCtx.fillRect(cop.x * scale - 1, cop.y * scale - 1, 3, 3);
+    }
+  }
+
+  // 任务标记
+  if (currentMission) {
+    let mx, my;
+    if (currentMission.type === 'steal' && currentMission.phase === 'find') {
+      const car = cars.find(c => c.id === currentMission.targetCar);
+      if (car) { mx = car.x * scale; my = car.y * scale; }
+    } else if (currentMission.destX !== undefined) {
+      mx = currentMission.destX * scale;
+      my = currentMission.destY * scale;
+    }
+    if (mx !== undefined) {
+      miniCtx.fillStyle = '#f1c40f';
+      miniCtx.beginPath();
+      miniCtx.arc(mx, my, 4, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+  }
+
+  // 玩家
+  miniCtx.fillStyle = '#fff';
+  miniCtx.beginPath();
+  miniCtx.arc(player.x * scale, player.y * scale, 3, 0, Math.PI * 2);
+  miniCtx.fill();
+  miniCtx.strokeStyle = '#000';
+  miniCtx.lineWidth = 1;
+  miniCtx.stroke();
+}
+
+// ========== HUD 更新 ==========
+function updateHUD() {
+  // 血量
+  const healthPct = clamp(player.health / player.maxHealth * 100, 0, 100);
+  document.getElementById('healthFill').style.width = healthPct + '%';
+
+  // 金钱
+  document.getElementById('moneyValue').textContent = '$' + player.money;
+
+  // 分数
+  document.getElementById('scoreValue').textContent = player.score;
+
+  // 通缉
+  const stars = document.querySelectorAll('#wantedStars .star');
+  stars.forEach((s, i) => {
+    s.classList.toggle('active', i < player.wanted);
+  });
+}
+
+// ========== 大消息 ==========
+function showBigMessage(text, subtext = '') {
+  const box = document.getElementById('messageBox');
+  box.innerHTML = `<div class="big-message">${text}${subtext ? `<div class="sub-message">${subtext}</div>` : ''}</div>`;
+  setTimeout(() => { box.innerHTML = ''; }, 2500);
+}
+
+// ========== 通知更新 ==========
+function updateNotification() {
+  if (notifTimer > 0) {
+    notifTimer--;
+    if (notifTimer <= 0) {
+      document.getElementById('notification').classList.remove('show');
+    }
+  }
+}
+
+// ========== 游戏主循环 ==========
+let gameRunning = false;
+let gameFrame = 0;
+
+function gameLoop() {
+  if (!gameRunning) return;
+
+  gameFrame++;
+
+  // 更新
+  updatePlayer();
+  updateCars();
+  updatePedestrians();
+  updatePolice();
+  updateBullets();
+  updateParticles();
+  updatePickups();
+  updateCamera();
+  updateMission();
+  updateNotification();
+  updateHUD();
+
+  // 玩家死亡
+  if (player.health <= 0 && player.alive) {
+    player.alive = false;
+    if (player.inCar) {
+      spawnExplosion(player.inCar.x, player.inCar.y);
+      player.inCar = null;
+      player.onFoot = true;
+    }
+    showBigMessage('WASTED', '你被击倒了...');
+    setTimeout(() => {
+      document.getElementById('gameOverScreen').style.display = 'flex';
+      document.getElementById('gameOverStats').textContent =
+        `分数: ${player.score}  |  金钱: $${player.money}`;
+    }, 2000);
+  }
+
+  // 渲染
+  render();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ========== 初始化游戏 ==========
+function initGame() {
+  generateMap();
+
+  // 玩家起始位置 (道路上)
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T_ROAD_X) {
+        player.x = x * TILE + TILE / 2;
+        player.y = y * TILE + TILE / 2;
+        break;
+      }
+    }
+    if (player.x > 0) break;
+  }
+
+  player.health = 100;
+  player.money = 0;
+  player.score = 0;
+  player.wanted = 0;
+  player.wantedTimer = 0;
+  player.alive = true;
+  player.inCar = null;
+  player.onFoot = true;
+  player.angle = 0;
+
+  camera.x = player.x - W / 2;
+  camera.y = player.y - H / 2;
+
+  spawnCarsOnRoad();
+  spawnPedestrians();
+  police = [];
+  bullets = [];
+  particles = [];
+  pickups = [];
+  currentMission = null;
+  missionTimer = 0;
+
+  gameRunning = true;
+  gameLoop();
+}
+
+// ========== 按钮事件 ==========
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  document.getElementById('startScreen').style.display = 'none';
+  initGame();
+  showBigMessage('偷车大盗', '在城市中生存下去！');
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  document.getElementById('gameOverScreen').style.display = 'none';
+  initGame();
+});
+
+</script>
+</body>
+</html>

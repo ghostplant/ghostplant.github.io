@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bombman 炸弹人</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="hud">
+            <div class="hud-section">
+                <span class="hud-label">关卡</span>
+                <span class="hud-value" id="hud-level">1</span>
+            </div>
+            <div class="hud-section">
+                <span class="hud-label">分数</span>
+                <span class="hud-value" id="hud-score">0</span>
+            </div>
+            <div class="hud-section">
+                <span class="hud-label">生命</span>
+                <span class="hud-value" id="hud-lives">♥♥♥</span>
+            </div>
+            <div class="hud-section">
+                <span class="hud-label">炸弹</span>
+                <span class="hud-value" id="hud-bombs">1</span>
+            </div>
+            <div class="hud-section">
+                <span class="hud-label">威力</span>
+                <span class="hud-value" id="hud-range">1</span>
+            </div>
+            <div class="hud-section">
+                <span class="hud-label">速度</span>
+                <span class="hud-value" id="hud-speed">1</span>
+            </div>
+        </div>
+        <div id="canvas-container">
+            <canvas id="game-canvas" width="720" height="624"></canvas>
+            <div id="overlay" class="overlay">
+                <div id="overlay-content"></div>
+            </div>
+        </div>
+        <div id="controls-hint">
+            <span>方向键 / WASD 移动</span>
+            <span>空格 放置炸弹</span>
+            <span>P 暂停</span>
+        </div>
+    </div>
+    <script src="js/game.js"></script>
+</body>
+</html>
