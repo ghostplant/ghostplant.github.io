@@ -1,0 +1,129 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body {
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  color: #cfd8e3;
+  -webkit-user-select: none; user-select: none;
+  touch-action: none;
+}
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hidden { display: none !important; }
+
+/* ---------- loading ---------- */
+#loading {
+  position: fixed; inset: 0; z-index: 100;
+  background: #000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px;
+}
+#loading .ring {
+  width: 90px; height: 90px; border-radius: 50%;
+  border: 2px solid rgba(255,170,80,0.15);
+  border-top-color: #ffae50;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 40px rgba(255,150,50,0.25);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-text {
+  text-align: center; letter-spacing: 6px; font-size: 20px; color: #ffcf9a;
+  text-shadow: 0 0 20px rgba(255,150,50,0.5);
+}
+.load-text span { letter-spacing: 2px; font-size: 11px; color: #7a8699; }
+
+/* ---------- error ---------- */
+#error { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; }
+.err-box { max-width: 520px; padding: 28px; background: #14060a; border: 1px solid #5a1a1a; border-radius: 10px; }
+.err-box h2 { color: #ff7a6a; margin-bottom: 12px; }
+.err-box p { color: #c9a9a9; font-size: 13px; line-height: 1.5; word-break: break-all; }
+.err-box button { margin-top: 16px; padding: 8px 20px; background: #5a1a1a; color: #ffd9d9; border: none; border-radius: 6px; cursor: pointer; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; top: 18px; left: 20px; z-index: 10; pointer-events: none; }
+#title { font-size: 26px; letter-spacing: 8px; color: #f3e2c7; text-shadow: 0 0 18px rgba(255,170,80,0.6); font-weight: 300; }
+#subtitle { font-size: 10px; letter-spacing: 3px; color: #8a94a6; margin-top: 2px; }
+#fps { margin-top: 12px; font-size: 13px; color: #9fe6a0; font-variant-numeric: tabular-nums; }
+#info { font-size: 11px; color: #6f7c8f; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+#debug {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 10;
+  padding: 4px 14px; background: rgba(0,0,0,0.55); border: 1px solid #3a4a5a;
+  border-radius: 4px; font-size: 12px; letter-spacing: 2px; color: #9fd0ff; pointer-events: none;
+}
+
+/* ---------- buttons ---------- */
+#buttons { position: fixed; top: 18px; right: 18px; z-index: 20; display: flex; gap: 8px; }
+#buttons button, #viewbar button {
+  min-width: 40px; height: 40px; padding: 0 10px;
+  background: rgba(10,14,20,0.6); color: #cfd8e3;
+  border: 1px solid rgba(120,140,170,0.25); border-radius: 8px;
+  font-size: 15px; cursor: pointer; backdrop-filter: blur(6px);
+  transition: all 0.15s;
+}
+#buttons button:hover, #viewbar button:hover { background: rgba(60,80,110,0.5); color: #fff; border-color: rgba(160,190,230,0.5); }
+#buttons button.active { background: rgba(255,150,50,0.25); border-color: #ffae50; color: #ffd9a0; }
+#btnQuality { font-size: 12px; letter-spacing: 1px; }
+
+/* ---------- view bar ---------- */
+#viewbar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; gap: 8px; }
+#viewbar button { height: 34px; font-size: 12px; letter-spacing: 1px; }
+#viewbar button.active { background: rgba(255,150,50,0.25); border-color: #ffae50; color: #ffd9a0; }
+
+/* ---------- parameter panel ---------- */
+#panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 320px; z-index: 30;
+  background: rgba(8,11,16,0.88); backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(120,140,170,0.2);
+  display: flex; flex-direction: column;
+  transform: translateX(0); transition: transform 0.25s;
+}
+#panel.hidden { display: flex !important; transform: translateX(100%); }
+#panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid rgba(120,140,170,0.15);
+  letter-spacing: 3px; font-size: 13px; color: #e8d9c0;
+}
+#panel-close { background: none; border: none; color: #8a94a6; font-size: 22px; cursor: pointer; }
+#panel-close:hover { color: #fff; }
+#params { flex: 1; overflow-y: auto; padding: 8px 16px 20px; }
+#params::-webkit-scrollbar { width: 6px; }
+#params::-webkit-scrollbar-thumb { background: #2a3442; border-radius: 3px; }
+
+.psec { margin: 14px 0 6px; font-size: 10px; letter-spacing: 3px; color: #ffae50; text-transform: uppercase; }
+.prow { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.prow label { flex: 0 0 108px; font-size: 11px; color: #9aa6b8; }
+.prow input[type=range] {
+  flex: 1; -webkit-appearance: none; appearance: none; height: 3px;
+  background: #2a3442; border-radius: 2px; outline: none; cursor: pointer;
+}
+.prow input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  background: #ffae50; cursor: pointer; box-shadow: 0 0 8px rgba(255,150,50,0.6);
+}
+.prow input[type=range]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%; background: #ffae50; border: none; cursor: pointer;
+}
+.prow .pval { flex: 0 0 52px; text-align: right; font-size: 11px; color: #d8e2ee; font-variant-numeric: tabular-nums; }
+
+/* ---------- help ---------- */
+#help { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; }
+.help-box { max-width: 480px; padding: 28px 34px; background: rgba(10,14,20,0.95); border: 1px solid rgba(120,140,170,0.3); border-radius: 12px; }
+.help-box h2 { letter-spacing: 4px; color: #ffcf9a; margin-bottom: 16px; font-weight: 300; }
+.help-box table { width: 100%; border-collapse: collapse; }
+.help-box td { padding: 5px 8px; font-size: 13px; }
+.help-box td:first-child { color: #9fd0ff; text-align: right; padding-right: 18px; white-space: nowrap; }
+.help-box td:last-child { color: #c9d4e2; }
+.help-box .dim { margin-top: 14px; font-size: 11px; color: #6f7c8f; line-height: 1.6; }
+
+#vignette-overlay { position: fixed; inset: 0; z-index: 5; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%); }
+
+/* ---------- mobile ---------- */
+@media (max-width: 720px) {
+  #title { font-size: 18px; letter-spacing: 5px; }
+  #subtitle { font-size: 8px; }
+  #panel { width: 84vw; }
+  #buttons button { min-width: 36px; height: 36px; }
+  #viewbar { bottom: 12px; }
+  #viewbar button { height: 30px; font-size: 10px; }
+}

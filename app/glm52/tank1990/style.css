@@ -1,0 +1,248 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --yellow: #fcbf3c;
+  --red: #e94560;
+  --bg: #0a0a14;
+  --panel: #14142a;
+  --text: #e0e0e0;
+}
+
+body {
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a14 100%);
+  color: var(--text);
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+#frame {
+  background: #000;
+  border: 3px solid #333;
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: 0 0 50px rgba(252, 191, 60, 0.15), 0 0 80px rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+#header {
+  text-align: center;
+  padding: 14px 20px 10px;
+  background: linear-gradient(180deg, #1a1a2e, #0a0a14);
+  border-bottom: 2px solid #333;
+  border-radius: 7px 7px 0 0;
+}
+
+#header h1 {
+  color: var(--yellow);
+  font-size: 22px;
+  letter-spacing: 3px;
+  text-shadow: 3px 3px 0 #b53120, 0 0 20px rgba(252, 191, 60, 0.3);
+}
+
+#subtitle {
+  color: #666;
+  font-size: 9px;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+#stage {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: #000;
+}
+
+#game {
+  background: #000;
+  border: 2px solid #222;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  width: 416px;
+  height: 416px;
+}
+
+#hud {
+  width: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hud-box {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.hud-label {
+  color: #666;
+  font-size: 7px;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.hud-val {
+  color: var(--yellow);
+  font-size: 13px;
+}
+
+.hud-enemy-box {
+  flex: 1;
+}
+
+.hud-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.hud-icons .enemy-icon {
+  width: 10px;
+  height: 10px;
+  background: #9c9c9c;
+  border: 1px solid #5c5c5c;
+  border-radius: 1px;
+}
+
+#footer {
+  padding: 8px 12px;
+  background: #0a0a14;
+  border-top: 2px solid #333;
+  border-radius: 0 0 7px 7px;
+}
+
+#controls-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  color: #555;
+  font-size: 7px;
+  letter-spacing: 0.5px;
+}
+
+#overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 10;
+  border-radius: 7px;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+#overlay-content {
+  text-align: center;
+  color: var(--text);
+  max-width: 90%;
+  padding: 20px;
+}
+
+#overlay-content h2 {
+  color: var(--yellow);
+  font-size: 22px;
+  margin-bottom: 16px;
+  text-shadow: 2px 2px 0 #b53120;
+  line-height: 1.5;
+  letter-spacing: 2px;
+}
+
+#overlay-content h3 {
+  color: var(--red);
+  font-size: 18px;
+  margin-bottom: 16px;
+  text-shadow: 2px 2px 0 #5a0010;
+  letter-spacing: 2px;
+}
+
+#overlay-content p {
+  font-size: 9px;
+  margin-bottom: 10px;
+  color: #aaa;
+  line-height: 1.8;
+  letter-spacing: 1px;
+}
+
+#overlay-content .highlight {
+  color: var(--yellow);
+  font-size: 11px;
+}
+
+#overlay-content .blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+#overlay-content .controls-list {
+  margin: 16px 0;
+  font-size: 8px;
+  color: #888;
+  line-height: 2;
+}
+
+#overlay-content .controls-list span {
+  color: var(--yellow);
+}
+
+.score-table {
+  margin: 12px auto;
+  font-size: 9px;
+  color: #aaa;
+}
+
+.score-table .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 20px;
+}
+
+.score-table .row .val {
+  color: var(--yellow);
+}
+
+@media (max-width: 560px) {
+  #game {
+    width: 308px;
+    height: 308px;
+  }
+  #hud {
+    width: 66px;
+  }
+  .hud-val {
+    font-size: 11px;
+  }
+  #header h1 {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>植物大战僵尸 - HTML5复刻版</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+
+    <!-- 控制按钮 -->
+    <div id="controls">
+      <button id="pauseBtn" title="暂停/继续">⏸</button>
+      <button id="muteBtn" title="音效开关">🔊</button>
+    </div>
+
+    <!-- 开始界面 -->
+    <div id="overlay">
+      <h1>🌻 植物大战僵尸 🧟</h1>
+      <h2>HTML5 复刻版</h2>
+      <button id="startBtn">开始游戏</button>
+      <div class="instructions">
+        <p><b>操作说明：</b></p>
+        <p>点击顶部种子栏选择植物 → 点击草地种植</p>
+        <p>点击天上掉落的 ☀ 收集阳光</p>
+        <p>右键取消选择 · 铲子可移除植物</p>
+        <p>抵御所有僵尸波次即可获胜！</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 按依赖顺序加载脚本（无需服务器，双击即可运行） -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/entities/zombies.js"></script>
+  <script src="js/entities/plants.js"></script>
+  <script src="js/entities/projectiles.js"></script>
+  <script src="js/entities/suns.js"></script>
+  <script src="js/core/audio.js"></script>
+  <script src="js/core/grid.js"></script>
+  <script src="js/core/ui.js"></script>
+  <script src="js/core/waves.js"></script>
+  <script src="js/core/input.js"></script>
+  <script src="js/render/renderer.js"></script>
+  <script src="js/core/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

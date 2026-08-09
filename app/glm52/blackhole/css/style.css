@@ -1,0 +1,309 @@
+/* style.css — GARGANTUA UI */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+    color: #ccc;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ─── HUD ─────────────────────────────────────────── */
+#hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.hud-info {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.hud-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.hud-sub {
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+
+.hud-stat {
+    font-size: 12px;
+    color: #aaa;
+    line-height: 1.6;
+}
+
+.hud-stat b {
+    color: #fff;
+}
+
+.hud-stat.debug {
+    color: #ff0;
+}
+
+.hud-stat.cinematic {
+    color: #0ff;
+    font-weight: 700;
+}
+
+.hud-stat.paused {
+    color: #f44;
+    font-weight: 700;
+}
+
+.hud-stat.audio {
+    color: #4f8;
+}
+
+.hud-status {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    text-align: right;
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.hud-bottom {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.kbd-hint {
+    font-size: 10px;
+    color: #666;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+/* ─── Parameter Panel ─────────────────────────────── */
+.hud-panel {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    width: 320px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: rgba(8, 8, 12, 0.92);
+    border: 1px solid rgba(80, 80, 120, 0.4);
+    border-radius: 8px;
+    padding: 16px;
+    pointer-events: auto;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 20;
+}
+
+.panel-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(80, 80, 120, 0.3);
+}
+
+.panel-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-label {
+    font-size: 10px;
+    color: #888;
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.slider-input {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(60, 60, 80, 0.5);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6af;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(100, 170, 255, 0.6);
+}
+
+.slider-input::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6af;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 4px rgba(100, 170, 255, 0.6);
+}
+
+.slider-value {
+    font-size: 10px;
+    color: #fff;
+    width: 50px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.panel-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    background: rgba(60, 80, 120, 0.4);
+    border: 1px solid rgba(100, 120, 160, 0.4);
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: background 0.2s;
+}
+
+.panel-btn:hover {
+    background: rgba(80, 100, 140, 0.6);
+}
+
+/* ─── Error overlay ───────────────────────────────── */
+#error-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    color: #f44;
+    text-align: center;
+}
+
+#error-overlay h2 {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+#error-overlay p {
+    font-size: 14px;
+    color: #aaa;
+}
+
+/* ─── Loading screen ──────────────────────────────── */
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    transition: opacity 1s;
+}
+
+.loading-text {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 8px;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.loading-sub {
+    font-size: 12px;
+    color: #666;
+    letter-spacing: 2px;
+}
+
+/* ─── Scrollbar ───────────────────────────────────── */
+.hud-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.hud-panel::-webkit-scrollbar-track {
+    background: transparent(0, 0, 0, 0.3);
+}
+
+.hud-panel::-webkit-scrollbar-thumb {
+    background: rgba(100, 120, 160, 0.5);
+    border-radius: 2px;
+}
+
+/* ─── Mobile ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .hud-title { font-size: 16px; }
+    .hud-sub { font-size: 9px; }
+    .hud-stat { font-size: 10px; }
+    .hud-panel { gap: 8px; }
+    .kbd-hint { font-size: 8px; }
+    .hud-panel {
+        width: 280px;
+        right: 8px;
+    }
+    .slider-label { width: 80px; font-size: 9px; }
+    .slider-value { font-size: 9px; width: 40px; }
+}

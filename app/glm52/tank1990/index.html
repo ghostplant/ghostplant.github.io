@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tank 1990 · 坦克大战</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="frame">
+    <div id="header">
+      <h1>TANK 1990</h1>
+      <div id="subtitle">坦克大战 · BATTLE CITY</div>
+    </div>
+    <div id="stage">
+      <canvas id="game" width="416" height="416"></canvas>
+      <div id="hud">
+        <div class="hud-box">
+          <div class="hud-label">关卡</div>
+          <div id="hud-stage" class="hud-val">01</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">得分</div>
+          <div id="hud-score" class="hud-val">0</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">生命</div>
+          <div id="hud-lives" class="hud-val">III</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">等级</div>
+          <div id="hud-level" class="hud-val">1</div>
+        </div>
+        <div class="hud-box hud-enemy-box">
+          <div class="hud-label">敌机</div>
+          <div id="hud-enemies" class="hud-icons"></div>
+        </div>
+      </div>
+    </div>
+    <div id="footer">
+      <div id="controls-hint">
+        <span>↑↓←→/WASD 移动</span>
+        <span>空格/J 射击</span>
+        <span>Enter 开始</span>
+        <span>P 暂停</span>
+      </div>
+    </div>
+    <div id="overlay" class="hidden">
+      <div id="overlay-content"></div>
+    </div>
+  </div>
+</div>
+<script src="js/constants.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/bullet.js"></script>
+<script src="js/tank.js"></script>
+<script src="js/powerup.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/map.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

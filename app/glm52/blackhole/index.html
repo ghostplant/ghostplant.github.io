@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GARGANTUA — Schwarzschild Black Hole Raytracer</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./vendor/three/build/three.module.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="hud"></div>
+    <div id="error-overlay">
+        <div>
+            <h2>WebGL Error</h2>
+            <p>WebGL initialization failed. Please ensure your browser supports WebGL2.</p>
+        </div>
+    </div>
+    <div id="loading">
+        <div class="loading-text">GARGANTUA</div>
+        <div class="loading-sub">Initialising raytracer…</div>
+    </div>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

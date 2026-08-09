@@ -1,0 +1,1098 @@
+/* ============================================
+   Window Styles
+   ============================================ */
+.window {
+  position: absolute;
+  background: var(--window-bg);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-radius: 10px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 20px 60px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  min-height: 100px;
+  animation: windowOpen 0.2s ease;
+}
+
+@keyframes windowOpen {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.window.closing {
+  animation: windowClose 0.2s ease forwards;
+}
+
+@keyframes windowClose {
+  to { opacity: 0; transform: scale(0.92); }
+}
+
+.window.minimizing {
+  animation: windowMinimize 0.4s ease forwards;
+}
+
+@keyframes windowMinimize {
+  to { opacity: 0; transform: scale(0.1) translateY(400px); }
+}
+
+.window.maximized {
+  border-radius: 0;
+}
+
+.window.inactive {
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Title Bar */
+.window-titlebar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.3);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  cursor: default;
+  flex-shrink: 0;
+  position: relative;
+}
+
+body.dark-mode .window-titlebar {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.window.inactive .window-titlebar {
+  background: rgba(245, 245, 245, 0.5);
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: default;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.1s;
+}
+
+.traffic-light svg {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.traffic-lights:hover .traffic-light svg {
+  opacity: 1;
+}
+
+.tl-close { background: var(--traffic-red); }
+.tl-minimize { background: var(--traffic-yellow); }
+.tl-maximize { background: var(--traffic-green); }
+
+.window.inactive .traffic-light {
+  background: #c4c4c4;
+}
+
+.window-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+body.dark-mode .window-title { color: #ddd; }
+.window.inactive .window-title { color: #999; }
+
+/* Window Content */
+.window-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: var(--window-bg);
+}
+
+body.dark-mode .window-content { background: var(--window-bg); }
+
+/* Resize handle */
+.window-resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.wrh-br { right: 0; bottom: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.wrh-bl { left: 0; bottom: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.wrh-tr { right: 0; top: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.wrh-r { right: 0; top: 12px; bottom: 12px; width: 5px; cursor: ew-resize; }
+.wrh-l { left: 0; top: 12px; bottom: 12px; width: 5px; cursor: ew-resize; }
+.wrh-b { left: 12px; right: 12px; bottom: 0; height: 5px; cursor: ns-resize; }
+.wrh-t { left: 12px; right: 12px; top: 0; height: 5px; cursor: ns-resize; }
+
+/* ============================================
+   Finder App
+   ============================================ */
+.finder { display: flex; height: 100%; }
+
+.finder-sidebar {
+  width: 180px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(20px);
+  padding: 38px 0 10px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid rgba(0,0,0,0.05);
+}
+
+.finder-sidebar-section {
+  margin-bottom: 12px;
+}
+
+.finder-sidebar-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  padding: 4px 14px;
+  text-transform: uppercase;
+}
+
+.finder-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  font-size: 13px;
+  color: #1a1a1a;
+  cursor: default;
+  border-radius: 6px;
+  margin: 1px 6px;
+}
+
+.finder-sidebar-item:hover { background: rgba(0, 0, 0, 0.05); }
+.finder-sidebar-item.active { background: var(--accent); color: #fff; }
+
+.finder-sidebar-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.finder-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.dark-mode .finder-main { background: rgba(50, 50, 55, 0.5); }
+
+.finder-toolbar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  margin-top: -38px;
+  position: relative;
+  z-index: 2;
+}
+
+.finder-nav-btn {
+  width: 28px;
+  height: 22px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 5px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 14px;
+}
+
+.finder-nav-btn:hover { background: rgba(0, 0, 0, 0.1); }
+.finder-nav-btn:disabled { opacity: 0.3; }
+
+.finder-title { flex: 1; text-align: center; font-weight: 600; font-size: 13px; color: #1a1a1a; }
+
+.finder-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.finder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px;
+}
+
+.finder-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.finder-item:hover { background: rgba(0, 0, 0, 0.05); }
+.finder-item.selected { background: rgba(0, 122, 255, 0.15); }
+
+.finder-item svg { width: 48px; height: 48px; }
+.finder-item-name { font-size: 12px; color: #1a1a1a; text-align: center; }
+
+/* ============================================
+   Notes App
+   ============================================ */
+.notes { display: flex; height: 100%; }
+
+.notes-sidebar {
+  width: 200px;
+  background: rgba(255, 248, 220, 0.5);
+  border-right: 0.5px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-sidebar-header {
+  padding: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.notes-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 16px;
+}
+
+.notes-btn:hover { background: rgba(0, 0, 0, 0.12); }
+
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.notes-list-item {
+  padding: 10px 12px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+  cursor: default;
+}
+
+.notes-list-item:hover { background: rgba(0, 0, 0, 0.04); }
+.notes-list-item.active { background: rgba(255, 200, 50, 0.2); }
+
+.notes-list-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+.notes-list-preview { font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.notes-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 250, 235, 0.7);
+}
+
+.notes-editor textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 20px;
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background: transparent;
+  resize: none;
+  color: #1a1a1a;
+}
+
+.notes-editor-header {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   Calculator App
+   ============================================ */
+.calculator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1c1c1e;
+  padding: 0;
+}
+
+.calc-display {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 20px 24px;
+  font-size: 56px;
+  font-weight: 300;
+  color: #fff;
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  min-height: 100px;
+  overflow: hidden;
+  word-break: break-all;
+  text-align: right;
+}
+
+.calc-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  padding: 0 1px 1px 1px;
+}
+
+.calc-btn {
+  border: none;
+  background: #333335;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 500;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  transition: filter 0.1s;
+  font-family: inherit;
+}
+
+.calc-btn:hover { filter: brightness(1.2); }
+.calc-btn:active { filter: brightness(0.8); }
+
+.calc-btn.fn { background: #a5a5a5; color: #000; }
+.calc-btn.op { background: #ff9f0a; color: #fff; }
+.calc-btn.zero { grid-column: span 2; }
+.calc-btn.op.active { background: #fff; color: #ff9f0a; }
+
+/* ============================================
+   Terminal App
+   ============================================ */
+.terminal {
+  height: 100%;
+  background: rgba(0, 0, 0, 0.88);
+  color: #e0e0e0;
+  font-family: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+  font-size: 13px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+.terminal::-webkit-scrollbar { width: 8px; }
+
+.terminal-line { white-space: pre-wrap; word-break: break-all; }
+.terminal-prompt { color: #4ec9b0; }
+.terminal-prompt-path { color: #569cd6; }
+.terminal-input-line { display: flex; align-items: center; }
+.terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 13px;
+  caret-color: #e0e0e0;
+}
+.terminal-output { color: #ccc; }
+.terminal-output.error { color: #f44747; }
+.terminal-output.success { color: #6a9955; }
+.terminal-output.info { color: #569cd6; }
+
+/* ============================================
+   Calendar App
+   ============================================ */
+.calendar { display: flex; flex-direction: column; height: 100%; background: rgba(255,255,255,0.8); }
+body.dark-mode .calendar { background: rgba(40,40,42,0.8); color: #fff; }
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.1);
+}
+
+.calendar-title { font-size: 18px; font-weight: 700; }
+
+.calendar-nav { display: flex; gap: 8px; }
+.calendar-nav-btn {
+  width: 28px; height: 28px;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  border-radius: 6px;
+  cursor: default;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #555;
+}
+.calendar-nav-btn:hover { background: rgba(0,0,0,0.12); }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+}
+
+.calendar-day-header {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  padding: 8px 0;
+  text-transform: uppercase;
+}
+
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #1a1a1a;
+  cursor: default;
+  border: 0.5px solid rgba(0,0,0,0.05);
+  min-height: 40px;
+}
+
+body.dark-mode .calendar-day { color: #ddd; border-color: rgba(255,255,255,0.05); }
+
+.calendar-day.other-month { color: #ccc; }
+body.dark-mode .calendar-day.other-month { color: #555; }
+.calendar-day.today { background: var(--accent); color: #fff; font-weight: 700; border-radius: 50%; }
+.calendar-day:hover:not(.today) { background: rgba(0,0,0,0.05); }
+
+/* ============================================
+   Safari App
+   ============================================ */
+.safari { display: flex; flex-direction: column; height: 100%; background: rgba(245,245,247,0.9); }
+
+.safari-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.3);
+}
+
+.safari-nav-btn {
+  width: 30px; height: 28px;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  border-radius: 6px;
+  cursor: default;
+  display: flex; align-items: center; justify-content: center;
+  color: #555;
+}
+.safari-nav-btn:hover { background: rgba(0,0,0,0.12); }
+
+.safari-address-bar {
+  flex: 1;
+  height: 28px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.safari-address-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: #1a1a1a;
+  font-family: inherit;
+}
+
+.safari-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  text-align: center;
+}
+
+.safari-startpage h1 { font-size: 28px; margin-bottom: 20px; color: #1a1a1a; }
+
+.safari-favorites {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.safari-fav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.safari-fav:hover { background: rgba(0,0,0,0.05); }
+.safari-fav-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.safari-fav-name { font-size: 12px; color: #1a1a1a; }
+
+/* ============================================
+   System Settings App
+   ============================================ */
+.settings { display: flex; height: 100%; background: rgba(245,245,247,0.9); }
+
+.settings-sidebar {
+  width: 200px;
+  background: rgba(230,230,235,0.5);
+  padding: 38px 0 10px 0;
+  overflow-y: auto;
+  border-right: 0.5px solid rgba(0,0,0,0.08);
+}
+
+.settings-search {
+  margin: 10px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.1);
+  font-size: 13px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: default;
+  border-radius: 6px;
+  margin: 1px 6px;
+  color: #1a1a1a;
+}
+
+.settings-item:hover { background: rgba(0,0,0,0.05); }
+.settings-item.active { background: var(--accent); color: #fff; }
+.settings-item svg { width: 18px; height: 18px; }
+
+.settings-main {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.settings-main h2 { font-size: 20px; margin-bottom: 20px; color: #1a1a1a; }
+
+.settings-group {
+  background: rgba(255,255,255,0.6);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+}
+
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 13px; color: #1a1a1a; }
+
+.toggle-switch {
+  width: 38px;
+  height: 22px;
+  background: #ccc;
+  border-radius: 11px;
+  position: relative;
+  cursor: default;
+  transition: background 0.2s;
+}
+
+.toggle-switch.on { background: var(--accent); }
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch.on::after { left: 18px; }
+
+/* ============================================
+   Photos App
+   ============================================ */
+.photos { display: flex; flex-direction: column; height: 100%; background: rgba(255,255,255,0.9); }
+
+.photos-toolbar {
+  padding: 10px 16px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.photos-toolbar h2 { font-size: 16px; font-weight: 600; }
+
+.photos-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  overflow-y: auto;
+}
+
+.photos-item {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  cursor: default;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  transition: transform 0.15s;
+}
+
+.photos-item:hover { transform: scale(1.02); }
+
+/* ============================================
+   Music App
+   ============================================ */
+.music { display: flex; flex-direction: column; height: 100%; background: rgba(250,250,252,0.95); }
+
+.music-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  gap: 16px;
+}
+
+.music-album {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff6b6b, #c44569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.music-album svg { width: 80px; height: 80px; color: rgba(255,255,255,0.8); }
+
+.music-title { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+.music-artist { font-size: 14px; color: #888; }
+
+.music-progress {
+  width: 80%;
+  height: 4px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 2px;
+  position: relative;
+}
+
+.music-progress-fill {
+  height: 100%;
+  width: 35%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.music-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.music-btn.play {
+  width: 48px;
+  height: 48px;
+  background: var(--accent);
+  border-radius: 50%;
+  color: #fff;
+}
+
+/* ============================================
+   Messages App
+   ============================================ */
+.messages { display: flex; height: 100%; }
+
+.messages-sidebar {
+  width: 220px;
+  background: rgba(245,245,247,0.6);
+  border-right: 0.5px solid rgba(0,0,0,0.08);
+  overflow-y: auto;
+}
+
+.messages-header {
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.messages-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: default;
+  border-bottom: 0.5px solid rgba(0,0,0,0.04);
+}
+
+.messages-item:hover { background: rgba(0,0,0,0.04); }
+.messages-item.active { background: var(--accent); }
+.messages-item.active .messages-item-name,
+.messages-item.active .messages-item-preview { color: #fff; }
+
+.messages-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.messages-item-content { flex: 1; overflow: hidden; }
+.messages-item-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+.messages-item-preview { font-size: 12px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.messages-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.5);
+}
+
+.messages-chat-header {
+  padding: 10px 16px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.messages-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-bubble {
+  max-width: 70%;
+  padding: 8px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.message-bubble.received {
+  align-self: flex-start;
+  background: #e9e9eb;
+  color: #1a1a1a;
+}
+
+.message-bubble.sent {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+
+.messages-chat-input {
+  padding: 10px 16px;
+  border-top: 0.5px solid rgba(0,0,0,0.08);
+  display: flex;
+  gap: 8px;
+}
+
+.messages-chat-input input {
+  flex: 1;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 18px;
+  padding: 8px 14px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  background: rgba(255,255,255,0.6);
+}
+
+/* ============================================
+   Maps App
+   ============================================ */
+.maps { height: 100%; position: relative; background: #e8e8e8; overflow: hidden; }
+
+.maps-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.maps-search {
+  flex: 1;
+  height: 32px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 8px;
+  border: none;
+  padding: 0 12px;
+  font-size: 13px;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.maps-canvas {
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(180deg, #c8e6c9 0%, #e8f5e9 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.maps-canvas svg { width: 100%; height: 100%; }
+
+/* ============================================
+   TextEdit App
+   ============================================ */
+.textedit { height: 100%; display: flex; flex-direction: column; }
+
+.textedit-toolbar {
+  padding: 6px 12px;
+  border-bottom: 0.5px solid rgba(0,0,0,0.08);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(255,255,255,0.3);
+}
+
+.textedit-btn {
+  padding: 4px 10px;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  border-radius: 5px;
+  cursor: default;
+  font-size: 12px;
+  color: #555;
+}
+
+.textedit-btn:hover { background: rgba(0,0,0,0.12); }
+.textedit-btn.active { background: var(--accent); color: #fff; }
+
+.textedit-area {
+  flex: 1;
+  padding: 20px;
+  outline: none;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.textedit-area:empty::before {
+  content: attr(data-placeholder);
+  color: #aaa;
+}
+
+/* ============================================
+   About This Mac
+   ============================================ */
+.about-mac {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+  background: rgba(245,245,247,0.9);
+}
+
+.about-mac-logo {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+}
+
+.about-mac h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: #1a1a1a; }
+.about-mac h2 { font-size: 14px; font-weight: 400; color: #666; margin-bottom: 20px; }
+
+.about-mac-info {
+  text-align: left;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.8;
+}
+
+.about-mac-info strong { color: #1a1a1a; }
+
+/* ============================================
+   App Store App
+   ============================================ */
+.appstore { height: 100%; display: flex; }
+
+.appstore-sidebar {
+  width: 180px;
+  background: rgba(230,230,235,0.5);
+  padding: 38px 0 10px 0;
+  border-right: 0.5px solid rgba(0,0,0,0.08);
+}
+
+.appstore-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: default;
+  border-radius: 6px;
+  margin: 1px 6px;
+  color: #1a1a1a;
+}
+
+.appstore-nav-item:hover { background: rgba(0,0,0,0.05); }
+.appstore-nav-item.active { background: var(--accent); color: #fff; }
+
+.appstore-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.appstore-main h2 { font-size: 18px; margin-bottom: 16px; color: #1a1a1a; }
+
+.appstore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.appstore-card {
+  background: rgba(255,255,255,0.6);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.appstore-card svg { width: 56px; height: 56px; }
+.appstore-card-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+.appstore-card-desc { font-size: 11px; color: #888; text-align: center; }
+
+.appstore-get-btn {
+  padding: 4px 16px;
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: default;
+}
+
+.appstore-get-btn:hover { background: rgba(0,0,0,0.12); }
+
+/* ============================================
+   Weather App
+   ============================================ */
+.weather {
+  height: 100%;
+  background: linear-gradient(180deg, #4a90e2 0%, #357abd 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+}
+
+.weather-city { font-size: 24px; font-weight: 500; }
+.weather-temp { font-size: 64px; font-weight: 200; }
+.weather-cond { font-size: 16px; opacity: 0.9; }
+weather-range { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+
+.weather-forecast {
+  display: flex;
+  gap: 16px;
+  margin-top: 30px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 12px 20px;
+  backdrop-filter: blur(10px);
+}
+
+.weather-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.weather-day-temp { font-size: 14px; font-weight: 600; }

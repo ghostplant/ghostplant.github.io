@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GARGANTUA — Schwarzschild Black Hole Raytracer</title>
+<meta name="description" content="Real-time Schwarzschild black hole raytracer with WebGL / Three.js">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="loading">
+  <div class="ring"></div>
+  <div class="load-text">GARGANTUA<br><span>compiling geodesic integrator…</span></div>
+</div>
+
+<div id="error" class="hidden">
+  <div class="err-box">
+    <h2>⚠ WebGL Error</h2>
+    <p id="err-msg"></p>
+    <button id="err-reload">Reload</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div id="title">GARGANTUA</div>
+  <div id="subtitle">Schwarzschild Black Hole Raytracer</div>
+  <div id="fps">— fps</div>
+  <div id="info"></div>
+</div>
+
+<div id="debug" class="hidden"></div>
+
+<div id="buttons">
+  <button id="btnQuality" title="Quality (Q)">High</button>
+  <button id="btnCinematic" title="Cinematic camera (C)">🎬</button>
+  <button id="btnMusic" title="Music (M)">♪</button>
+  <button id="btnShot" title="Screenshot (S)">📷</button>
+  <button id="btnFull" title="Fullscreen (F)">⛶</button>
+  <button id="btnHelp" title="Help (H)">?</button>
+  <button id="btnReset" title="Reset (R)">⟲</button>
+  <button id="btnPanel" title="Parameters (G)">☰</button>
+</div>
+
+<div id="viewbar">
+  <button class="view-btn" data-view="0">Edge On</button>
+  <button class="view-btn" data-view="1">Top Down</button>
+  <button class="view-btn" data-view="2">Close</button>
+  <button class="view-btn" data-view="3">Far</button>
+</div>
+
+<div id="panel" class="hidden">
+  <div id="panel-head">
+    <span>PARAMETERS</span>
+    <button id="panel-close">×</button>
+  </div>
+  <div id="params"></div>
+</div>
+
+<div id="help" class="hidden">
+  <div class="help-box">
+    <h2>KEYBOARD</h2>
+    <table>
+      <tr><td>Drag / Wheel</td><td>Orbit / Zoom</td></tr>
+      <tr><td>Space</td><td>Pause time</td></tr>
+      <tr><td>C</td><td>Cinematic camera</td></tr>
+      <tr><td>Q</td><td>Cycle quality</td></tr>
+      <tr><td>F1 – F4</td><td>View presets</td></tr>
+      <tr><td>0 – 9</td><td>Debug views</td></tr>
+      <tr><td>M</td><td>Music</td></tr>
+      <tr><td>S</td><td>Screenshot</td></tr>
+      <tr><td>F</td><td>Fullscreen</td></tr>
+      <tr><td>G</td><td>Parameter panel</td></tr>
+      <tr><td>H</td><td>This help</td></tr>
+      <tr><td>R</td><td>Reset parameters</td></tr>
+    </table>
+    <p class="dim">Debug: 0 normal · 1 ray dir · 2 steps · 3 crossings · 4 impact param · 5 sky · 6 glow · 7 disk α · 8 ring · 9 raw HDR</p>
+  </div>
+</div>
+
+<div id="vignette-overlay"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

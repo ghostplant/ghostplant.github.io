@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>macOS — Desktop</title>
+  <link rel="stylesheet" href="css/desktop.css">
+  <link rel="stylesheet" href="css/windows.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+</head>
+<body>
+  <!-- Boot Screen -->
+  <div id="boot-screen">
+    <div class="boot-apple">
+      <svg viewBox="0 0 170 170" width="80" height="80">
+        <path fill="#fff" d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.197-2.12-9.973-3.17-14.34-3.17-4.58 0-9.492 1.05-14.746 3.17-5.262 2.13-9.501 3.24-12.742 3.35-4.929.21-9.842-1.96-14.746-6.52-3.13-2.73-7.045-7.41-11.735-14.04-5.032-7.08-9.169-15.29-12.41-24.65-3.471-10.11-5.211-19.9-5.211-29.378 0-10.857 2.346-20.221 7.045-28.068 3.693-6.303 8.606-11.275 14.755-14.925s12.793-5.51 19.948-5.629c3.915 0 9.049 1.211 15.429 3.591 6.362 2.388 10.447 3.599 12.238 3.599 1.339 0 5.877-1.416 13.57-4.239 7.275-2.618 13.415-3.702 18.445-3.275 13.63 1.1 23.87 6.473 30.68 16.153-12.19 7.386-18.22 17.731-18.1 31.002.11 10.337 3.86 18.939 11.23 25.769 3.34 3.17 7.07 5.62 11.22 7.36-.9 2.61-1.85 5.11-2.86 7.51zM119.11 7.24c0 8.102-2.96 15.667-8.86 22.669-7.12 8.324-15.732 13.134-25.071 12.375-.119-1-.188-2.045-.188-3.139 0-7.778 3.386-16.102 9.399-22.908 3.002-3.446 6.82-6.311 11.45-8.596 4.62-2.252 8.99-3.497 13.1-3.71.119 1.083.17 2.166.17 3.249z"/>
+      </svg>
+    </div>
+    <div class="boot-progress"><div class="boot-progress-bar"></div></div>
+  </div>
+
+  <!-- Desktop -->
+  <div id="desktop" class="hidden">
+    <!-- Menu Bar -->
+    <div id="menubar">
+      <div class="menubar-left">
+        <div class="menu-item apple-menu" id="apple-menu-btn">
+          <svg class="apple-logo-sm" viewBox="0 0 170 170"><path fill="currentColor" d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.197-2.12-9.973-3.17-14.34-3.17-4.58 0-9.492 1.05-14.746 3.17-5.262 2.13-9.501 3.24-12.742 3.35-4.929.21-9.842-1.96-14.746-6.52-3.13-2.73-7.045-7.41-11.735-14.04-5.032-7.08-9.169-15.29-12.41-24.65-3.471-10.11-5.211-19.9-5.211-29.378 0-10.857 2.346-20.221 7.045-28.068 3.693-6.303 8.606-11.275 14.755-14.925s12.793-5.51 19.948-5.629c3.915 0 9.049 1.211 15.429 3.591 6.362 2.388 10.447 3.599 12.238 3.599 1.339 0 5.877-1.416 13.57-4.239 7.275-2.618 13.415-3.702 18.445-3.275 13.63 1.1 23.87 6.473 30.68 16.153-12.19 7.386-18.22 17.731-18.1 31.002.11 10.337 3.86 18.939 11.23 25.769 3.34 3.17 7.07 5.62 11.22 7.36-.9 2.61-1.85 5.11-2.86 7.51zM119.11 7.24c0 8.102-2.96 15.667-8.86 22.669-7.12 8.324-15.732 13.134-25.071 12.375-.119-1-.188-2.045-.188-3.139 0-7.778 3.386-16.102 9.399-22.908 3.002-3.446 6.82-6.311 11.45-8.596 4.62-2.252 8.99-3.497 13.1-3.71.119 1.083.17 2.166.17 3.249z"/></svg>
+        </div>
+        <div class="menu-item app-name" id="active-app-name">Finder</div>
+        <div class="menu-item">File</div>
+        <div class="menu-item">Edit</div>
+        <div class="menu-item">View</div>
+        <div class="menu-item">Go</div>
+        <div class="menu-item">Window</div>
+        <div class="menu-item">Help</div>
+      </div>
+      <div class="menubar-right">
+        <div class="menu-item" id="battery-icon" title="Battery">
+          <svg width="24" height="14" viewBox="0 0 24 14"><rect x="1" y="2" width="20" height="10" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/><rect x="3" y="4" width="14" height="6" rx="1" fill="currentColor"/><rect x="22" y="5" width="1.5" height="4" rx="0.5" fill="currentColor" opacity="0.5"/></svg>
+        </div>
+        <div class="menu-item" id="wifi-icon" title="WiFi">
+          <svg width="18" height="14" viewBox="0 0 18 14"><path d="M9 3.5c2.5 0 4.8 1 6.5 2.6l1.4-1.6C14.9 2.3 12.1 1 9 1S3.1 2.3 1.1 4.5l1.4 1.6C4.2 4.5 6.5 3.5 9 3.5zm0 4c1.4 0 2.7.5 3.7 1.5l1.4-1.6C12.8 6 10.9 5.3 9 5.3s-3.8.7-5.1 2.1l1.4 1.6c1-1 2.3-1.5 3.7-1.5zm0 3.5c.6 0 1.1.2 1.5.6L9 13.5l-1.5-1.9c.4-.4.9-.6 1.5-.6z" fill="currentColor"/></svg>
+        </div>
+        <div class="menu-item" id="search-icon" title="Spotlight">
+          <svg width="15" height="15" viewBox="0 0 15 15"><path d="M10.5 10.5L14 14M6.5 1a5.5 5.5 0 100 11 5.5 5.5 0 000-11zm0 2a3.5 3.5 0 110 7 3.5 3.5 0 010-7z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+        </div>
+        <div class="menu-item" id="control-center-btn" title="Control Center">
+          <svg width="18" height="15" viewBox="0 0 18 15"><rect x="1" y="2" width="16" height="2.5" rx="1.25" fill="currentColor" opacity="0.9"/><rect x="1" y="7" width="16" height="2.5" rx="1.25" fill="currentColor" opacity="0.5"/><rect x="1" y="12" width="16" height="2.5" rx="1.25" fill="currentColor" opacity="0.9"/><circle cx="5" cy="3.25" r="2" fill="currentColor"/><circle cx="13" cy="8.25" r="2" fill="currentColor"/><circle cx="7" cy="13.25" r="2" fill="currentColor"/></svg>
+        </div>
+        <div class="menu-item" id="datetime"></div>
+      </div>
+    </div>
+
+    <!-- Desktop Area -->
+    <div id="desktop-area">
+      <!-- Desktop Icons -->
+      <div id="desktop-icons">
+        <div class="desktop-icon" data-app="finder" data-drive="true">
+          <svg viewBox="0 0 100 100" width="52" height="52">
+            <defs><linearGradient id="hd-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8e8ed"/><stop offset="1" stop-color="#b8b8c0"/></linearGradient></defs>
+            <rect x="10" y="20" width="80" height="55" rx="8" fill="url(#hd-grad)" stroke="#999" stroke-width="0.5"/>
+            <rect x="10" y="68" width="80" height="12" rx="6" fill="url(#hd-grad)" stroke="#999" stroke-width="0.5"/>
+            <circle cx="72" cy="50" r="4" fill="#888"/>
+            <text x="50" y="55" text-anchor="middle" font-size="9" font-weight="600" fill="#666">Macintosh HD</text>
+          </svg>
+          <div class="icon-label">Macintosh HD</div>
+        </div>
+      </div>
+
+      <!-- Windows Layer -->
+      <div id="windows-layer"></div>
+
+      <!-- Selection box for desktop click -->
+      <div id="desktop-selection" class="hidden"></div>
+    </div>
+
+    <!-- Dock -->
+    <div id="dock-container">
+      <div id="dock">
+        <div class="dock-items" id="dock-items"></div>
+        <div class="dock-divider"></div>
+        <div class="dock-items" id="dock-items-2">
+          <div class="dock-icon" data-app="trash" title="Trash">
+            <div class="dock-icon-inner" id="trash-icon"></div>
+            <div class="dock-tooltip">Trash</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spotlight Search -->
+    <div id="spotlight" class="overlay hidden">
+      <div class="spotlight-box">
+        <div class="spotlight-input-wrapper">
+          <span class="spotlight-icon">
+            <svg width="22" height="22" viewBox="0 0 22 22"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2"/><line x1="14" y1="14" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+          <input type="text" id="spotlight-input" placeholder="Spotlight Search" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="spotlight-results" id="spotlight-results"></div>
+      </div>
+    </div>
+
+    <!-- Launchpad -->
+    <div id="launchpad" class="overlay hidden">
+      <div class="launchpad-search">
+        <input type="text" id="launchpad-search" placeholder="Search" autocomplete="off">
+      </div>
+      <div class="launchpad-grid" id="launchpad-grid"></div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden"></div>
+
+    <!-- Control Center -->
+    <div id="control-center" class="hidden">
+      <div class="cc-row">
+        <div class="cc-card cc-tile">
+          <div class="cc-tile-icon wifi-active">
+            <svg width="20" height="16" viewBox="0 0 18 14"><path d="M9 3.5c2.5 0 4.8 1 6.5 2.6l1.4-1.6C14.9 2.3 12.1 1 9 1S3.1 2.3 1.1 4.5l1.4 1.6C4.2 4.5 6.5 3.5 9 3.5zm0 4c1.4 0 2.7.5 3.7 1.5l1.4-1.6C12.8 6 10.9 5.3 9 5.3s-3.8.7-5.1 2.1l1.4 1.6c1-1 2.3-1.5 3.7-1.5zm0 3.5c.6 0 1.1.2 1.5.6L9 13.5l-1.5-1.9c.4-.4.9-.6 1.5-.6z" fill="currentColor"/></svg>
+          </div>
+          <div class="cc-tile-text"><div class="cc-tile-title">Wi-Fi</div><div class="cc-tile-sub">Home</div></div>
+        </div>
+        <div class="cc-card cc-tile">
+          <div class="cc-tile-icon">
+            <svg width="20" height="16" viewBox="0 0 20 16"><path d="M10 2C6 2 3 4 1 6l1.5 1.5C4 6 7 4.5 10 4.5s6 1.5 7.5 3L19 6c-2-2-5-4-9-4zm0 4c-2.5 0-5 1-6.5 2.5L5 10c1.5-1 3-1.5 5-1.5s3.5.5 5 1.5l1.5-1.5C15 7 12.5 6 10 6zm0 4c-1.5 0-3 .5-4 1.5L7.5 13c.8-.5 1.5-1 2.5-1s1.7.5 2.5 1L14 11.5c-1-1-2.5-1.5-4-1.5z" fill="currentColor"/></svg>
+          </div>
+          <div class="cc-tile-text"><div class="cc-tile-title">Bluetooth</div><div class="cc-tile-sub">On</div></div>
+        </div>
+      </div>
+      <div class="cc-row">
+        <div class="cc-card cc-tile">
+          <div class="cc-tile-icon">
+            <svg width="20" height="16" viewBox="0 0 20 16"><circle cx="6" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          </div>
+          <div class="cc-tile-text"><div class="cc-tile-title">AirDrop</div><div class="cc-tile-sub">Contacts Only</div></div>
+        </div>
+        <div class="cc-card cc-tile">
+          <div class="cc-tile-icon">
+            <svg width="20" height="16" viewBox="0 0 20 16"><rect x="2" y="3" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="5" width="8" height="6" fill="currentColor"/></svg>
+          </div>
+          <div class="cc-tile-text"><div class="cc-tile-title">Stage Manager</div><div class="cc-tile-sub">Off</div></div>
+        </div>
+      </div>
+      <div class="cc-card cc-slider-card">
+        <div class="cc-slider-row"><span>Display</span><div class="cc-slider-bar"><div class="cc-slider-fill" style="width:80%"></div><div class="cc-slider-knob" style="left:80%"></div></div></div>
+        <div class="cc-slider-row"><span>Sound</span><div class="cc-slider-bar"><div class="cc-slider-fill" style="width:60%"></div><div class="cc-slider-knob" style="left:60%"></div></div></div>
+      </div>
+      <div class="cc-row">
+        <div class="cc-card cc-darkmode" id="dark-mode-toggle">
+          <div class="cc-tile-icon"><svg width="18" height="18" viewBox="0 0 18 18"><path d="M10 2a7 7 0 100 14 7 7 0 010-14z" fill="currentColor"/><path d="M10 2v14" stroke="currentColor" stroke-width="1"/></svg></div>
+          <div class="cc-tile-text"><div class="cc-tile-title">Dark Mode</div><div class="cc-tile-sub" id="dark-mode-status">Off</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="hidden"></div>
+  </div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/apps.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

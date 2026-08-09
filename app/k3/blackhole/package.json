@@ -1,0 +1,15 @@
+{
+  "name": "gargantua-blackhole",
+  "version": "1.0.0",
+  "description": "GARGANTUA — Schwarzschild Black Hole Raytracer (Three.js / WebGL2 / GLSL)",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "serve": "python3 -m http.server 8080",
+    "audio": "python3 tools/make_audio.py",
+    "test": "node tools/test.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^22.0.0"
+  }
+}
