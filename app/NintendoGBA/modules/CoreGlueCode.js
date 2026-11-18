@@ -254,8 +254,61 @@ function registerROM() {
     processDownload(this, attachROM);
 
     IodineGUI.Iodine.disableAudio();
-    document.getElementById("sound").checked = false;
-    IodineGUI.Iodine.play();
+    var sound = document.getElementById("sound");
+    sound.checked = false;
+
+    var popup = document.createElement("dialog");
+    popup.setAttribute("aria-label", "Start game");
+    popup.style.cssText =
+        "padding:32px;border:0;border-radius:12px;text-align:center";
+    popup.innerHTML =
+        '<button type="button" style="font-size:24px;padding:12px 48px;cursor:pointer">Play</button>' +
+        '<p role="alert"></p>';
+
+    var button = popup.querySelector("button");
+    var message = popup.querySelector("p");
+
+    popup.onkeydown = popup.onkeyup = function (event) {
+        event.stopPropagation();
+    };
+    popup.addEventListener("cancel", function (event) {
+        event.preventDefault();
+    });
+
+    button.addEventListener("click", async function () {
+        button.disabled = true;
+        message.textContent = "";
+
+        try {
+            if (!sound.checked) sound.click();
+
+            var context = window.XAudioJSWebAudioContextHandle;
+            if (!context) throw new Error("Web Audio did not initialize.");
+
+            await context.resume();
+            if (context.state !== "running") {
+                throw new Error("Audio is not running.");
+            }
+
+            IodineGUI.Iodine.play();
+            if (!IodineGUI.isPlaying) {
+                throw new Error("The emulator did not start.");
+            }
+
+            popup.close();
+            popup.remove();
+        } catch (error) {
+            IodineGUI.Iodine.pause();
+            IodineGUI.Iodine.disableAudio();
+            sound.checked = false;
+            button.disabled = false;
+            message.textContent = error.message;
+            console.error("Could not start the game:", error);
+        }
+    });
+
+    document.body.appendChild(popup);
+    popup.showModal();
 }
 
 function registerIodineHandler() {
