@@ -252,6 +252,10 @@ function downloadROM(gamename) {
 function registerROM() {
     clearTempString();
     processDownload(this, attachROM);
+
+    IodineGUI.Iodine.disableAudio();
+    document.getElementById("sound").checked = false;
+    IodineGUI.Iodine.play();
 }
 
 function registerIodineHandler() {
@@ -331,7 +335,7 @@ function registerBlitterHandler() {
 }
 
 function registerAudioHandler() {
-    var Mixer = new GlueCodeMixer(document.getElementById("play"));
+    var Mixer = new GlueCodeMixer(document.getElementById("sound"));
     IodineGUI.mixerInput = new GlueCodeMixerInput(Mixer);
     IodineGUI.Iodine.attachAudioHandler(IodineGUI.mixerInput);
 }
