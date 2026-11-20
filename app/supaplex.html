@@ -1350,13 +1350,10 @@ globalThis.SUPAPLEX_DATA={"levels":[{"number":1,"name":"WARM UP","width":60,"hei
   window.addEventListener("resize", resize);
   window.addEventListener("blur", () => {
     clearInput();
-    if (isAnimating()) pause();
   });
+  
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      clearInput();
-      if (isAnimating()) pause();
-    }
+    if (document.hidden) clearInput();
   });
 
   $("start").addEventListener("click", startOrContinue);
